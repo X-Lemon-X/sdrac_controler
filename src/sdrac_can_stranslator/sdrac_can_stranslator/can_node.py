@@ -9,19 +9,19 @@ import os
 class CanPublisher(Node):
   def __init__(self):
     super().__init__('can_node')
-    self.publisher_joints = self.create_publisher(JointState, '/controls/joint-state', 10)
-    self.publisher_status = self.create_publisher(DiagnosticStatus, '/diagnostics/status', 10)
-    self.publisher_errors = self.create_publisher(DiagnosticStatus, '/diagnostics/errors', 10)
+    self.publisher_joints = self.create_publisher(JointState, '/controls/joint_state', 10)
+    self.publisher_status = self.create_publisher(DiagnosticArray, '/diagnostics/status', 10)
+    self.publisher_errors = self.create_publisher(DiagnosticArray, '/diagnostics/errors', 10)
 
     self.sub_joint_set_callback = self.create_subscription(
       JointState,
-      '/controls/joint-seters',
+      '/controls/joint_seters',
       self.joint_set_callback,
       10
     )
     
     self.python_file_dir = os.path.dirname(os.path.realpath(__file__))
-    self.can_db_file = f'{self.python_file_dir}/ariadna_constants/can_messages/output/can.dbc'
+    self.can_db_file = f'/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc'
 
     self.can_time_out = 0.006
     self.can_interface_name = 'can0'
@@ -49,11 +49,17 @@ class CanPublisher(Node):
     self.errors = []
     self.set_default_values()
 
+    self.start_can()
+
+
   def set_default_values(self):
-    self.states = [ 'emergency_stop' for _ in self.get_axis_range() ]
+    self.states = [ {'status':'emergency_stop'} for _ in self.get_axis_range() ]
     self.positions = [ float('nan') for _ in self.get_axis_range() ]
     self.velocities = [ float('nan') for _ in self.get_axis_range() ]
     self.errors = [ self.errors_empty() for _ in self.get_axis_range() ]
+
+  # def __exit__(self):
+  #   self.stop_can()
 
   def __del__(self):
     self.stop_can()
@@ -110,23 +116,23 @@ class CanPublisher(Node):
   def decode_status(self, msg):
     if msg is None:
       return
-    number = self.konarms_can_messages_id_to_number[msg.frame_id]
-    decoded = self.konarms_can_messages_id_to_msg[msg.frame_id].decode(msg.data)
+    number = self.konarms_can_messages_id_to_number[msg.arbitration_id]
+    decoded = self.konarms_can_messages_id_to_msg[msg.arbitration_id].decode(msg.data)
     self.states[number - 1] = decoded
   
   def decode_get_pos(self, msg):
     if msg is None:
       return
-    number = self.konarms_can_messages_id_to_number[msg.frame_id]
-    decoded = self.konarms_can_messages_id_to_msg[msg.frame_id].decode(msg.data)
+    number = self.konarms_can_messages_id_to_number[msg.arbitration_id]
+    decoded = self.konarms_can_messages_id_to_msg[msg.arbitration_id].decode(msg.data)
     self.positions[number - 1] = decoded['position']
     self.velocities[number - 1] = decoded['velocity']
   
   def decode_get_errors(self, msg):
     if msg is None:
       return
-    number = self.konarms_can_messages_id_to_number[msg.frame_id]
-    decoded = self.konarms_can_messages_id_to_msg[msg.frame_id].decode(msg.data)
+    number = self.konarms_can_messages_id_to_number[msg.arbitration_id]
+    decoded = self.konarms_can_messages_id_to_msg[msg.arbitration_id].decode(msg.data)
     self.errors[number - 1] = decoded
   
   def read_can(self):
@@ -135,7 +141,7 @@ class CanPublisher(Node):
       if msg is None:
         return
       # Check if the message is unknown  
-      if msg.frame_id not in self.konarms_can_decode_functions:
+      if msg.arbitration_id not in self.konarms_can_decode_functions:
         self.get_logger().warning(f"Received unnknown message on can: {self.can_interface_name}: {msg}")
         return
       # Decode the message with the appropriate function
@@ -157,6 +163,8 @@ class CanPublisher(Node):
         msg_send = can.Message(arbitration_id=msg.frame_id,data=_data,is_remote_frame=_is_remote_frame,is_extended_id=msg.is_extended_frame)
         
         self.can_bus.send(msg_send)
+        if _is_remote_frame:
+          self.read_can()
       except can.exceptions.CanOperationError as e:
         self.get_logger().error(f"Error TX can:{self.can_interface_name} {e}")    
 
@@ -166,18 +174,18 @@ class CanPublisher(Node):
 
   def tc_can_read_pos(self):
     self.can_send('get_pos',_is_remote_frame=True)
-    self.read_can()
+    # self.read_can()
     ros_msg = JointState()
     ros_msg.header.stamp = self.get_clock().now().to_msg()
     ros_msg.header.frame_id = 'joint_state'
-    ros_msg.name = 'konarm_get_pos'
+    # ros_msg.name = 'konarmgetpos'
     ros_msg.position = self.positions
     ros_msg.velocity = self.velocities
     self.publisher_joints.publish(ros_msg)
 
   def tc_can_read_state(self):
     self.can_send('status',_is_remote_frame=True)
-    self.read_can()
+    # self.read_can()
     ros_msg = DiagnosticArray()
     ros_msg.header.stamp = self.get_clock().now().to_msg()
     
@@ -185,11 +193,11 @@ class CanPublisher(Node):
     for state in self.states:
       status = DiagnosticStatus()
       status.name = f'konarm_{id}_status'
-      if(state == 'ok'):
+      if(state['status'] == 'ok'):
         status.level = DiagnosticStatus.OK
       else:
         status.level = DiagnosticStatus.ERROR
-      status.message = state
+      status.message = str(state['status'])
       ros_msg.status.append(status)
       id += 1
 
@@ -197,7 +205,7 @@ class CanPublisher(Node):
 
   def tc_can_read_error(self):
     self.can_send('get_errors',_is_remote_frame=True)
-    self.read_can()
+    # self.read_can()
     ros_msg = DiagnosticArray()
     ros_msg.header.stamp = self.get_clock().now().to_msg()
     ros_msg.header.frame_id = 'konarm_errors'
@@ -207,9 +215,12 @@ class CanPublisher(Node):
       status.name = f'konarm_{id}_get_errors'
       status.message = 'errors_list'
       status.level = DiagnosticStatus.OK
-      for key, value in errors.items():
-        status.values.append(KeyValue(key, value))
-        if value == 'fault':
+      for key in errors.keys():
+        kv = KeyValue()
+        kv.key = key
+        kv.value = str(errors[key])
+        status.values.append(kv)
+        if kv.value == 'fault':
           status.level = DiagnosticStatus.ERROR
       ros_msg.status.append(status)
       id += 1

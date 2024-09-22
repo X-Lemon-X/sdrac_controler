@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-          'can_code = sdrac_can_stranslator.can_code:main',
+          'can_code = sdrac_can_stranslator.can_node:main',
         ],
     },
 )
