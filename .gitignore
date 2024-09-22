@@ -1,0 +1,33 @@
+# ROS build and development files
+build/
+devel/
+install/
+
+
+
+# Logs
+log/
+
+# ROS package specific files
+*.pyc
+*.swp
+*.bak
+*.log
+
+# Catkin workspace files
+.cproject
+.project
+.settings/
+.rosinstall
+.rosinstall.bak
+
+# Other common ignores
+*.DS_Store
+
+
+# fro python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.venv/

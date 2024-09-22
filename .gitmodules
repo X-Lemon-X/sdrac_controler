@@ -1,0 +1,6 @@
+[submodule "src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants"]
+	path = src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants
+	url = git@github.com:X-Lemon-X/ariadna_constants.git
+[submodule "src/rc_six_axis/rc_six_axis/Pilot_6_axis"]
+	path = src/rc_six_axis/rc_six_axis/Pilot_6_axis
+	url = git@github.com:X-Lemon-X/Pilot_6_axis.git
