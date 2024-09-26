@@ -1,11 +1,6 @@
 from setuptools import find_packages, setup
-from glob import glob
-import os
 
-
-package_name = 'rc_six_axis'
-# submodules = 'rc_six_axis/Pilot_6_axis/ros'
-# submodules = ['lemonx_receive', 'receiver_ros']
+package_name = 'controler'
 
 setup(
     name=package_name,
@@ -15,18 +10,18 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*')))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='lemonx',
     maintainer_email='dudzinski.patryk.02@gmail.com',
-    description='Remote control node for six axis rc from https://github.com/X-Lemon-X/Pilot_6_axis',
-    license='MIT',
+    description='TODO: Package description',
+    license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-          'rc_node = rc_six_axis.rc_six_axis:main',
+            'controler_xyz = controler.controler_xyz:main'
+            'controler_translator = controler.controler_translator:main'
         ],
     },
 )

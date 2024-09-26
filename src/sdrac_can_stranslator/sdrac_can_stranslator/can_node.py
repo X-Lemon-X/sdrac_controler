@@ -9,23 +9,32 @@ import os
 class CanPublisher(Node):
   def __init__(self):
     super().__init__('can_node')
-    self.publisher_joints = self.create_publisher(JointState, '/controls/joint_state', 10)
-    self.publisher_status = self.create_publisher(DiagnosticArray, '/diagnostics/status', 10)
-    self.publisher_errors = self.create_publisher(DiagnosticArray, '/diagnostics/errors', 10)
+    self.publisher_joints = self.create_publisher(JointState, '/controls/sdrac/joint_geters', 10)
+    self.publisher_status = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/status', 10)
+    self.publisher_errors = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/errors', 10)
 
     self.sub_joint_set_callback = self.create_subscription(
       JointState,
-      '/controls/joint_seters',
+      '/controls/sdrac/joint_seters',
       self.joint_set_callback,
       10
     )
-    
-    self.python_file_dir = os.path.dirname(os.path.realpath(__file__))
-    self.can_db_file = f'/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc'
+    self.declare_parameter('can_db_file', '/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc')
+    self.declare_parameter('can_interface_name', 'can0')
+    self.declare_parameter('can_bitrate', 100000)
+    self.declare_parameter('can_time_out', 0.006)
+    self.can_db_file = self.get_parameter('can_db_file').get_parameter_value().string_value
+    self.can_interface_name = self.get_parameter('can_interface_name').get_parameter_value().string_value
+    self.can_bitrate = self.get_parameter('can_bitrate').get_parameter_value().integer_value
+    self.can_time_out = self.get_parameter('can_time_out').get_parameter_value().double_value
 
-    self.can_time_out = 0.006
-    self.can_interface_name = 'can0'
-    self.can_bitrate = 100000
+
+    # self.python_file_dir = os.path.dirname(os.path.realpath(__file__))
+    # self.can_db_file = f'/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc'
+
+    # self.can_time_out = 0.006
+    # self.can_interface_name = 'can0'
+    # self.can_bitrate = 100000
     self.can_bus = None
     self.konarms_can_messages = {}
     self.konarms_can_decode_functions = {}
