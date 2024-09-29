@@ -20,8 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'controler_xyz = controler.controler_xyz:main'
-            'controler_translator = controler.controler_translator:main'
+            'controler_xyz = controler.controler_xyz:main',
+            'controler_translator = controler.controler_translator:main',
+            'controler_rc = controler.controler_dumy_rc:main',
         ],
     },
 )
