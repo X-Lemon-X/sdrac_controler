@@ -1,0 +1,25 @@
+launch:
+
+- node:
+    pkg: "controler"
+    exec: "controler_translator"
+    name: "sdrac_control"
+    namespace: "sdrac"
+
+- node:
+    pkg: "controler"
+    exec: "controler_rc"
+    name: "sdrac_control"
+    namespace: "sdrac"
+
+- node:
+    pkg: "rc_six_axis"
+    exec: "mimic"
+    name: "sdrac_rc"
+    namespace: "sdrac"
+
+- node:
+    pkg: "sdrac_can_stranslator"
+    exec: "can_code"
+    name: "sdrac_can"
+    namespace: "sdrac"
