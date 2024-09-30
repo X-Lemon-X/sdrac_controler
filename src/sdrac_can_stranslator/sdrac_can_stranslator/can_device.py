@@ -9,6 +9,10 @@ class CanDevice:
   NC = '\033[0m'  # No Color
 
   def __init__(self, name_of_can_interface:str="can0", bitrate:int=1000000):
+    ## Class to set up CAN interface
+    # @param name_of_can_interface: Name of the CAN interface
+    # @param bitrate: Bitrate of the CAN interface
+    
     self.vendor_id = "16d0"
     self.product_id = "117e"
     self.vendor_enc = "Openlight\x20Labs"
@@ -90,7 +94,7 @@ class CanDevice:
     self.__can_up_device()
     self.__can_config_txqueuelen()
 
-  def setup_can(self):
+  def init_can(self):
     # Check if CAN interface is UP
     result = subprocess.run(['ip', 'addr', 'show', self.name_of_can_interface], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode == 0:
@@ -101,7 +105,6 @@ class CanDevice:
     self.check_if_program_is_installed("ifconfig", "net-tools")
     self.__can_up()
     
-
 if __name__ == "__main__":
   can_device = CanDevice()
-  can_device.setup_can()
+  can_device.init_can()
