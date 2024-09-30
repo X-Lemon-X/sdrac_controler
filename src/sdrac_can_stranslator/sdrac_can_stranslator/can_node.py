@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 import cantools
 import can
+from can_device import CanHat
 from sensor_msgs.msg import JointState 
 from diagnostic_msgs.msg import KeyValue, DiagnosticStatus, DiagnosticArray
 import os
@@ -12,6 +13,8 @@ class CanPublisher(Node):
     self.publisher_joints = self.create_publisher(JointState, '/controls/sdrac/joint_geters', 10)
     self.publisher_status = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/status', 10)
     self.publisher_errors = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/errors', 10)
+
+    
 
     self.sub_joint_set_callback = self.create_subscription(
       JointState,
@@ -27,7 +30,6 @@ class CanPublisher(Node):
     self.can_interface_name = self.get_parameter('can_interface_name').get_parameter_value().string_value
     self.can_bitrate = self.get_parameter('can_bitrate').get_parameter_value().integer_value
     self.can_time_out = self.get_parameter('can_time_out').get_parameter_value().double_value
-
 
     # self.python_file_dir = os.path.dirname(os.path.realpath(__file__))
     # self.can_db_file = f'/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc'
@@ -58,7 +60,7 @@ class CanPublisher(Node):
     self.errors = []
     self.set_default_values()
 
-    self.start_can()
+    # self.start_can()
 
 
   def set_default_values(self):
@@ -82,8 +84,16 @@ class CanPublisher(Node):
       self.get_logger().error(msg)
       raise FileNotFoundError(msg)
     
+    try:
+      can_starter = CanHat(name_of_can_interface=self.can_interface_name,bitrate=self.can_bitrate)
+      if not can_starter.check_if_can_interface_up():
+        self.can_bus = can_starter.init_can_interface()
+    except ValueError as e:
+      self.get_logger().error(f"{e}")
+      return
+
     self.can_db = cantools.database.load_file(self.can_db_file)
-    self.can_bus = can.interface.Bus(self.can_interface_name, bustype='socketcan', bitrate=self.can_bitrate)
+    # self.can_bus = can.interface.Bus(self.can_interface_name, bustype='socketcan', bitrate=self.can_bitrate)
     self.konarms_can_messages = {}
     self.konarms_can_messages_id_to_msg = {}
     for i in self.get_axis_range():

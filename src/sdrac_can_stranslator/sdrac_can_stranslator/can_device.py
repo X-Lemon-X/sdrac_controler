@@ -1,12 +1,13 @@
 import os
 import subprocess
+import can
 
-class CanDevice:
+class CanHat:
   RED = '\033[0;31m'
   GREEN = '\033[0;32m'
   BLUE = '\033[0;34m'
   ORANGE = '\033[0;33m'
-  NC = '\033[0m'  # No Color
+  NC = '\033[0m' 
 
   def __init__(self, name_of_can_interface:str="can0", bitrate:int=1000000):
     ## Class to set up CAN interface
@@ -33,8 +34,22 @@ class CanDevice:
 
     if bitrate not in self.map_bitrate_to_parameter:
       raise ValueError(f"Unsupported bitrate: \"{bitrate}\" \nsupported bitrates are: {self.map_bitrate_to_parameter.keys()}")
-    
-  def check_if_program_is_installed(self, program, package):
+
+  def check_if_can_interface_up(self) -> bool:
+    result = subprocess.run(['ip', 'addr', 'show', self.name_of_can_interface], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return result.returncode == 0
+
+  def init_can_interface(self):
+    # Check if CAN interface is UP
+    if self.check_if_can_interface_up():
+      print(f"{self.ORANGE}Can is already UP!{self.NC}")
+      return can.interface.Bus(self.name_of_can_interface, bustype='socketcan', bitrate=self.bitrate)
+    self.__check_if_program_is_installed("slcand", "can-utils")
+    self.__check_if_program_is_installed("ifconfig", "net-tools")
+    self.__can_up()
+    return can.interface.Bus(self.name_of_can_interface, bustype='socketcan', bitrate=self.bitrate)
+
+  def __check_if_program_is_installed(self, program, package):
     result = subprocess.run(['which', program], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
       print(f"{self.RED}Error program: \"{program}\" is not installed.{self.NC}")
@@ -42,30 +57,33 @@ class CanDevice:
     else:
       print(f"{self.BLUE} Program: \"{program}\" is installed{self.NC}")
 
-  def __can_set_up_interface(self,device_path):
+
+  def __can_set_up_interface(self,device_path) -> bool:
     ret = subprocess.run(['sudo', 'slcand', '-o', '-c', f'-{self.map_bitrate_to_parameter[self.bitrate]}', device_path, self.name_of_can_interface])
     if ret.returncode == 0:
       print(f"{self.GREEN}Can interface configurated successfully!{self.NC}")
-      return 
     print(f"{self.RED}Error setting up can interface{self.NC}")
-  
+    raise ValueError("Error setting up can configurated")
+
   def __can_up_device(self):
     ret = subprocess.run(['sudo', 'ip', 'link', 'set', 'dev', self.name_of_can_interface, 'up', 'type', 'can', 'bitrate', str(self.bitrate)])
     if ret.returncode == 0:
       print(f"{self.GREEN}Can interface set up successfully!{self.NC}")
-      return
+    
     print(f"{self.RED}Error setting up can interface{self.NC}")
     print(f"{self.ORANGE}Trying to set up can interface in compatibility mode{self.NC}")
     ret = subprocess.run(['sudo', 'ip', 'link', 'set', 'up', self.name_of_can_interface])
     if ret.returncode == 0:
       print(f"{self.GREEN}Can interface set up successfully!{self.NC}")
-      return
     print(f"{self.RED}Error setting up can interface in compatibility mode {self.NC}")
+    
+    raise ValueError("Error setting up can interface")
 
   def __can_config_txqueuelen(self):
     result = subprocess.run(['sudo', 'ifconfig', self.name_of_can_interface, 'txqueuelen', '1000'])
     if result.returncode != 0:
       print(f"{self.RED}Error setting txqueuelen {self.NC}")
+      raise ValueError("Error setting txqueuelen")
     else:
       print(f"{self.GREEN}Can intrface txqueuelen set successfully!{self.NC}")
 
@@ -90,21 +108,11 @@ class CanDevice:
       return
     else:
       print(f"{self.GREEN}Can-hat found on: {device_path}{self.NC}")
-    self.__can_set_up_interface(device_path)
+    ret = self.__can_set_up_interface(device_path)
     self.__can_up_device()
     self.__can_config_txqueuelen()
 
-  def init_can(self):
-    # Check if CAN interface is UP
-    result = subprocess.run(['ip', 'addr', 'show', self.name_of_can_interface], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.returncode == 0:
-      print(f"{self.ORANGE}Can is already UP!{self.NC}")
-      return
-
-    self.check_if_program_is_installed("slcand", "can-utils")
-    self.check_if_program_is_installed("ifconfig", "net-tools")
-    self.__can_up()
-    
+  
 if __name__ == "__main__":
-  can_device = CanDevice()
-  can_device.init_can()
+  can_device = CanHat()
+  can_device.init_can_interface()
