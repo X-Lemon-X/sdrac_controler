@@ -20,6 +20,7 @@ class ControlerTranslatorNode(Node):
     super().__init__('can_node')
     self.publisher_joints_seters = self.create_publisher(JointState, '/controls/sdrac/joint_seters', 10)
     self.publisher_joints_states = self.create_publisher(JointState, '/controls/sdrac/joint_states', 10)
+    self.publisher_joints_states_gui = self.create_publisher(JointState, '/joint_states', 10)
 
     self.sub_joint_control= self.create_subscription(
       JointState,
@@ -122,6 +123,7 @@ class ControlerTranslatorNode(Node):
     reponse.velocity[4] = j5_v
     reponse.velocity[5] = j6_v
     self.publisher_joints_states.publish(reponse)
+    self.publisher_joints_states_gui.publish(reponse)
 
     
     
