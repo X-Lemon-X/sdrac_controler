@@ -22,7 +22,7 @@ class ControlerDumyRC(Node):
 
     self.sub_joint_states = self.create_subscription(
       Joy,
-      '/joy',
+      'joy',
       self.joy_callback,
       10
     )
@@ -42,9 +42,9 @@ class ControlerDumyRC(Node):
       velocity.append(axis)
     msg_joint.velocity = velocity 
     msg_joint.effort = []
-    positons = [ 0 for _ in range(5)]
+    positons = [ 0.0 for _ in range(6)]
     msg_joint.position = positons
-    self.get_logger().info(f"joy message: \"{msg_joint}\"")
+    # self.get_logger().info(f"joy message: \"{msg_joint}\"")
     self.publisher_joints.publish(msg_joint)
 
 

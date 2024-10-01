@@ -66,18 +66,19 @@ class ControlerTranslatorNode(Node):
     # This function is called when a message is received on /controls/sdrac/joint_control
     # The message is then translated to the corresponding joints and send to /controls/sdrac/joint_seters
     # The message is also send to /controls/sdrac/joint_states
+    # self.get_logger().info(f"joint_control_callback: \"{msg}\"")
     joint_4_position = msg.position[3]
     joint_5_position = msg.position[4]
     joint_6_position = msg.position[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_p, j5_p, j6_p = self.translate_for_diff_drive(joint_4_position, joint_5_position, joint_6_position)
+    j4_p, j5_p, j6_p = self.translate_reading_for_diff_drive(joint_4_position, joint_5_position, joint_6_position)
 
     # map velocity to position
     joint_4_velocity = msg.velocity[3]
     joint_5_velocity = msg.velocity[4]
     joint_6_velocity = msg.velocity[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_v, j5_v, j6_v = self.translate_for_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
+    j4_v, j5_v, j6_v = self.translate_reading_for_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
     reponse = JointState()
     reponse.header.stamp = self.get_clock().now().to_msg()
     reponse.position = msg.position
@@ -133,7 +134,7 @@ def main(args=None):
   # Destroy the node explicitly
   # (optional - otherwise it will be done automatically
   # when the garbage collector destroys the node object)
-  can_publsiher.destroy_node()
+  can_publsiher.drc_nodeestroy_node()
   rclpy.shutdown()
 
 

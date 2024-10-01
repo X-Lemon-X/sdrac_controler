@@ -43,10 +43,10 @@ class CanHat:
     # Check if CAN interface is UP
     if self.check_if_can_interface_up():
       print(f"{self.ORANGE}Can is already UP!{self.NC}")
-      return can.interface.Bus(self.name_of_can_interface, interface='socketcan', bitrate=self.bitrate)
-    self.__check_if_program_is_installed("slcand", "can-utils")
-    self.__check_if_program_is_installed("ifconfig", "net-tools")
-    self.__can_up()
+    else:  
+      self.__check_if_program_is_installed("slcand", "can-utils")
+      self.__check_if_program_is_installed("ifconfig", "net-tools")
+      self.__can_up()
     return can.interface.Bus(self.name_of_can_interface, interface='socketcan', bitrate=self.bitrate)
 
   def __check_if_program_is_installed(self, program, package):

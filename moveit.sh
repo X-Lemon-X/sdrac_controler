@@ -6,6 +6,7 @@ sudo rosdep init
 rosdep update
 sudo apt update
 sudo apt dist-upgrade
+sudo apt install ros-humble-gazebo-ros-pkgs
 
 sudo apt install python3-colcon-common-extensions
 sudo apt install python3-colcon-mixin

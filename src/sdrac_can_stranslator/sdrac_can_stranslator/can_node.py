@@ -2,10 +2,13 @@ import rclpy
 from rclpy.node import Node
 import cantools
 import can
-from can_device import CanHat
 from sensor_msgs.msg import JointState 
 from diagnostic_msgs.msg import KeyValue, DiagnosticStatus, DiagnosticArray
 import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+from .can_device import CanHat
 
 class CanPublisher(Node):
   def __init__(self):
@@ -45,6 +48,10 @@ class CanPublisher(Node):
     self.konarm_axes = 6
     self.start_can()
 
+    self.robot_disconnect = True
+    self.robot_disconnect_time = 0.5
+    self.robot_disconnect_last_time = self.get_clock().now()
+
     self.period_read_pos = 1/50
     self.period_read_error = 1/2
     self.period_read_state = 1/2
@@ -78,6 +85,17 @@ class CanPublisher(Node):
   def get_axis_range(self) -> range:
     return range(1, self.konarm_axes + 1)
 
+  def robot_disconnect_check(self,connect:bool):
+    if connect:
+      if self.robot_disconnect:
+        self.get_logger().info("CAN connected")
+      self.robot_disconnect = False
+      self.robot_disconnect_last_time = self.get_clock().now()
+    else:
+      if (self.get_clock().now() - self.robot_disconnect_last_time).nanoseconds > self.robot_disconnect_time * 1e9:
+        self.robot_disconnect = True
+        self.get_logger().error("CAN disconnected")
+
   def start_can(self):
     if not os.path.exists(self.can_db_file):
       msg = f'Can db file not found: {self.can_db_file}'
@@ -87,13 +105,13 @@ class CanPublisher(Node):
     try:
       can_starter = CanHat(name_of_can_interface=self.can_interface_name,bitrate=self.can_bitrate)
       if not can_starter.check_if_can_interface_up():
-        self.can_bus = can_starter.init_can_interface()
+        can_starter.init_can_interface()
     except ValueError as e:
       self.get_logger().error(f"{e}")
       return
 
     self.can_db = cantools.database.load_file(self.can_db_file)
-    # self.can_bus = can.interface.Bus(self.can_interface_name, bustype='socketcan', bitrate=self.can_bitrate)
+    self.can_bus = can.interface.Bus(self.can_interface_name, bustype='socketcan', bitrate=self.can_bitrate)
     self.konarms_can_messages = {}
     self.konarms_can_messages_id_to_msg = {}
     for i in self.get_axis_range():
@@ -158,6 +176,7 @@ class CanPublisher(Node):
     try:
       msg = self.can_bus.recv(self.can_time_out)
       if msg is None:
+        self.robot_disconnect_check(False)
         return
       # Check if the message is unknown  
       if msg.arbitration_id not in self.konarms_can_decode_functions:
@@ -166,21 +185,22 @@ class CanPublisher(Node):
       # Decode the message with the appropriate function
       self.konarms_can_decode_functions[msg.arbitration_id](msg)
       frame = self.konarms_can_messages_id_to_msg[msg.arbitration_id]
-      self.get_logger().info(f"Received: {frame.frame_id} {frame.name}")
-  
+      # self.get_logger().info(f"Received: {frame.frame_id} {frame.name}")
+      self.robot_disconnect_check(True)
     except can.exceptions.CanOperationError as e:
       self.get_logger().error(f"Error RX can:{self.can_interface_name} {e}")
     return 
 
   def can_send(self, msg_name_short:str,_data:list=None,_is_remote_frame:bool=False):
+    # self.get_logger().info(f"can_send: {msg_name_short} \n {_data}")
     for i in self.get_axis_range():
       try:
         msg = self.konarms_can_messages[f'konarm_{i}_{msg_name_short}']
+        data_send = None
         if _data is not None:
-          _data = msg.encode(_data)
-        
-        msg_send = can.Message(arbitration_id=msg.frame_id,data=_data,is_remote_frame=_is_remote_frame,is_extended_id=msg.is_extended_frame)
-        
+          data_send = msg.encode(_data[i-1])
+
+        msg_send = can.Message(arbitration_id=msg.frame_id,data=data_send,is_remote_frame=_is_remote_frame,is_extended_id=msg.is_extended_frame)
         self.can_bus.send(msg_send)
         if _is_remote_frame:
           self.read_can()
@@ -252,14 +272,8 @@ class CanPublisher(Node):
     if len(msg.velocity) != self.konarm_axes:
       self.get_logger().error(f"Invalid number of velocities: {len(msg)}")
       return
-    
-    for i in self.get_axis_range():
-      self.can_send('set_pos',
-                    {
-                      "position" : msg.position[i - 1],
-                      "velocity" : msg.velocity[i - 1]
-                    })  
-      
+    data = [ { "position" : float(msg.position[i - 1]), "velocity" : float(msg.velocity[i - 1])} for i in self.get_axis_range()]  
+    self.can_send('set_pos',data)
 
 def main(args=None):
   rclpy.init(args=args)
