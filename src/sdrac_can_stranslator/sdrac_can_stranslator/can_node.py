@@ -13,6 +13,7 @@ from .can_device import CanHat
 class CanPublisher(Node):
   def __init__(self):
     super().__init__('can_node')
+    self.get_logger().info("CAN node starting")
     self.publisher_joints = self.create_publisher(JointState, '/controls/sdrac/joint_geters', 10)
     self.publisher_status = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/status', 10)
     self.publisher_errors = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/errors', 10)
@@ -93,8 +94,9 @@ class CanPublisher(Node):
       self.robot_disconnect_last_time = self.get_clock().now()
     else:
       if (self.get_clock().now() - self.robot_disconnect_last_time).nanoseconds > self.robot_disconnect_time * 1e9:
+        if not self.robot_disconnect:
+          self.get_logger().error("CAN disconnected")
         self.robot_disconnect = True
-        self.get_logger().error("CAN disconnected")
 
   def start_can(self):
     if not os.path.exists(self.can_db_file):

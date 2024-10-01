@@ -110,12 +110,20 @@ class ControlerTranslatorNode(Node):
     joint_6_velocity = msg.velocity[5]
     # Translate the velocity of the robot to the velocity of the joints
     j4_v, j5_v, j6_v = self.tranlate_writing_for_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
+    names = [
+      "Rev1",
+      "Rev2",
+      "Rev3",
+      "Rev4",
+      "Rev5",
+      "Rev6"
+    ]
     reponse = JointState()
     reponse.header.stamp = self.get_clock().now().to_msg()
     reponse.position = msg.position
     reponse.velocity = msg.velocity
     reponse.effort = msg.effort
-    reponse.name = msg.name
+    reponse.name = names
     reponse.position[3] = j4_p
     reponse.position[4] = j5_p
     reponse.position[5] = j6_p
@@ -123,6 +131,18 @@ class ControlerTranslatorNode(Node):
     reponse.velocity[4] = j5_v
     reponse.velocity[5] = j6_v
     self.publisher_joints_states.publish(reponse)
+
+    # Publish the message to the GUI
+    reponse = JointState()
+    reponse.header.stamp = self.get_clock().now().to_msg()
+    reponse.position = msg.position
+    reponse.velocity = []
+    reponse.effort = []
+    reponse.name = names
+    reponse.position.reverse()
+    reponse.velocity.reverse()
+    reponse.name.reverse()
+
     self.publisher_joints_states_gui.publish(reponse)
 
     

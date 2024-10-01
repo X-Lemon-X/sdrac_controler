@@ -1,6 +1,9 @@
 import os
 import subprocess
 import can
+import time
+import rclpy
+from rclpy.node import Node
 
 class CanHat:
   RED = '\033[0;31m'
@@ -9,7 +12,7 @@ class CanHat:
   ORANGE = '\033[0;33m'
   NC = '\033[0m' 
 
-  def __init__(self, name_of_can_interface:str="can0", bitrate:int=1000000):
+  def __init__(self, name_of_can_interface:str="can0", bitrate:int=1000000, logger=None):
     ## Class to set up CAN interface
     # @param name_of_can_interface: Name of the CAN interface
     # @param bitrate: Bitrate of the CAN interface
@@ -19,6 +22,7 @@ class CanHat:
     self.vendor_enc = "Openlight\x20Labs"
     self.name_of_can_interface = name_of_can_interface
     self.bitrate = bitrate
+    self.logger = logger
 
     self.map_bitrate_to_parameter = {
       1000000: "s8",
@@ -38,57 +42,68 @@ class CanHat:
   def check_if_can_interface_up(self) -> bool:
     result = subprocess.run(['ip', 'addr', 'show', self.name_of_can_interface], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return result.returncode == 0
+  
+  def log_info(self, msg, color=None):
+    if self.logger:
+      self.logger.get_logger().info(msg)
+    else:
+      print(f"{color if color else ''}{msg}{self.NC}")
+  
+  def log_error(self, msg, color=None):
+    if self.logger:
+      self.logger.get_logger().error(msg)
+    else:
+      print(f"{color if color else ''}{msg}{self.NC}")
 
   def init_can_interface(self):
     # Check if CAN interface is UP
     if self.check_if_can_interface_up():
-      print(f"{self.ORANGE}Can is already UP!{self.NC}")
+      self.log_info("Can is already UP!", self.ORANGE)
     else:  
       self.__check_if_program_is_installed("slcand", "can-utils")
       self.__check_if_program_is_installed("ifconfig", "net-tools")
       self.__can_up()
-    return can.interface.Bus(self.name_of_can_interface, interface='socketcan', bitrate=self.bitrate)
+    # return can.interface.Bus(self.name_of_can_interface, interface='socketcan', bitrate=self.bitrate)
 
   def __check_if_program_is_installed(self, program, package):
     result = subprocess.run(['which', program], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
-      print(f"{self.RED}Error program: \"{program}\" is not installed.{self.NC}")
+      self.log_error(f"Error program: \"{program}\" is not installed.", self.RED)
       subprocess.run(['sudo', 'apt-get', 'install', package, '-y'])
     else:
-      print(f"{self.BLUE} Program: \"{program}\" is installed{self.NC}")
+      self.log_info(f"Program: \"{program}\" is installed", self.BLUE)
 
-
-  def __can_set_up_interface(self,device_path):
+  def __can_set_up_interface(self, device_path):
     ret = subprocess.run(['sudo', 'slcand', '-o', '-c', f'-{self.map_bitrate_to_parameter[self.bitrate]}', device_path, self.name_of_can_interface])
     if ret.returncode == 0:
-      print(f"{self.GREEN}Can interface configurated successfully!{self.NC}")
+      self.log_info("Can interface configurated successfully!", self.GREEN)
       return
-    msg = f"{self.RED}Error setting up can interface{self.NC}"
-    print(msg)
+    msg = "Error setting up can interface"
+    self.log_error(msg, self.RED)
     raise ValueError(msg)
 
   def __can_up_device(self):
     ret = subprocess.run(['sudo', 'ip', 'link', 'set', 'dev', self.name_of_can_interface, 'up', 'type', 'can', 'bitrate', str(self.bitrate)])
     if ret.returncode == 0:
-      print(f"{self.GREEN}Can interface set up successfully!{self.NC}")
+      self.log_info("Can interface set up successfully!", self.GREEN)
       return
-    print(f"{self.RED}Error setting up can interface{self.NC}")
-    print(f"{self.ORANGE}Trying to set up can interface in compatibility mode{self.NC}")
+    self.log_error("Error setting up can interface", self.RED)
+    self.log_info("Trying to set up can interface in compatibility mode", self.ORANGE)
     ret = subprocess.run(['sudo', 'ip', 'link', 'set', 'up', self.name_of_can_interface])
     if ret.returncode == 0:
-      print(f"{self.GREEN}Can interface set up successfully!{self.NC}")
+      self.log_info("Can interface set up successfully!", self.GREEN)
       return
-    msg = f"{self.RED}Error setting up can interface in compatibility mode {self.NC}"
-    print(msg)
+    msg = "Error setting up can interface in compatibility mode"
+    self.log_error(msg, self.RED)
     raise ValueError(msg)
 
   def __can_config_txqueuelen(self):
     result = subprocess.run(['sudo', 'ifconfig', self.name_of_can_interface, 'txqueuelen', '1000'])
     if result.returncode != 0:
-      print(f"{self.RED}Error setting txqueuelen {self.NC}")
+      self.log_error("Error setting txqueuelen", self.RED)
       raise ValueError("Error setting txqueuelen")
     else:
-      print(f"{self.GREEN}Can intrface txqueuelen set successfully!{self.NC}")
+      self.log_info("Can interface txqueuelen set successfully!", self.GREEN)
 
   def __get_can_device_path(self):
     devs = [dev for dev in os.listdir('/dev') if 'tty' in dev]
@@ -107,16 +122,16 @@ class CanHat:
   def __can_up(self):
     device_path = self.__get_can_device_path()
     if not device_path:
-      print(f"{self.RED}No can-hat found{self.NC}")
-      return
+      self.log_error("No can-hat found", self.RED)
     else:
-      print(f"{self.GREEN}Can-hat found on: {device_path}{self.NC}")
+      self.log_info(f"Can-hat found on: {device_path}", self.GREEN)
     self.__can_set_up_interface(device_path)
+    time.sleep(0.5)
     self.__can_up_device()
+    time.sleep(0.5)
     self.__can_config_txqueuelen()
-
+    time.sleep(0.5)
   
 if __name__ == "__main__":
   can_device = CanHat()
-  can_interface = can_device.init_can_interface()
-  can_interface.shutdown()
+  can_device.init_can_interface()
