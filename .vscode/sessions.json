@@ -8,32 +8,37 @@
     "default": [
       [
         {
-          "name": "launch",
+          "name": "launch:develop",
+          "icon": "debug",
+          "color": "terminal.ansiBlue",
           "commands": [
-            ""
+            "source /opt/ros/humble/setup.bash",
+            "colcon build --symlink-install && source install/local_setup.bash",
+            "ros2 launch launch_files/develop_rc.launch.py"
           ]
         },
         {
-          "name": "docker:k8s",
+          "name": "candump",
+          "icon": "call-incoming",
+          "color": "terminal.ansiGreen",
           "commands": [
-            ""
+            "source /opt/ros/humble/setup.bash",
+            "colcon build --symlink-install && source install/local_setup.bash",
+            "candump can0"
           ]
         }
       ],
-      [
-        {
-          "name": "docker:nats",
-          "commands": [
-            ""
-          ]
-        },
-        {
-          "name": "docker:fleet",
-          "commands": [
-            ""
-          ]
-        }
-      ]
+      {
+        "name": "rviz",
+        "icon": "eye",
+        "color": "terminal.ansiYellow",
+        "commands": [
+          "source /opt/ros/humble/setup.bash",
+          "colcon build --symlink-install && source install/local_setup.bash",
+          "export QT_SCREEN_SCALE_FACTORS=1",
+          "ros2 launch sdrac_description display.launch.py"
+        ]
+      }
     ]
   }
 }
