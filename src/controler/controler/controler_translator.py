@@ -36,31 +36,28 @@ class ControlerTranslatorNode(Node):
       10
     )
 
-  def translate_reading_for_diff_drive(self, roll_4, roll_5, roll_6):
+  def translate_to_diff_drive(self, roll_4, roll_5, roll_6):
     # This function is used to translate the velocity of the robot to the velocity of the joints
-    # The robot uses a differential drive
     # 3 jouitn forming differential drive
     out_5 = (roll_5 + roll_6)/2
     out_6 = (roll_5 - roll_6)/2
     # corection fot the 4th joint
     out_4 = roll_4
-    ## TO DO
-    # one of this wil most likelky be + and the other - but that depend from the setup 
+    # one of this wil most likelky be + and the other - but that depend from the setup of the robot 
     out_5 = out_5 - out_4
     out_6 = out_6 - out_4
     return out_4, out_5, out_6
 
-  def tranlate_writing_for_diff_drive(self, in_4, in_5, in_6):
+  def tranlate_from_diff_drive_to(self, in_4, in_5, in_6):
     #  inferse of the   translate_reading_for_diff_drive
     #  this function is used to translate the velocity of the joints to the velocity of the robot 
     rot_4 = in_4
-    # TODO do the math 
-    # one of this wil most likelky be + and the other - but that depend from the setup
-    out_5 = in_5 + in_4
-    out_6 = in_6 + in_4
-
-    rot_5 = in_5 + in_6
-    rot_6 = in_5 - in_6
+    # corection fot the 4th joint that rotates the 5th and 6th joint
+    in_5 = in_5 - rot_4
+    in_6 = in_6 - rot_4
+    # inverse of differential drive
+    rot_5 = -(in_5 - in_6)/2 
+    rot_6 = (in_5 + in_6)/2
     return rot_4, rot_5, rot_6
   
   def joint_control_callback(self, msg: JointState):
@@ -72,14 +69,14 @@ class ControlerTranslatorNode(Node):
     joint_5_position = msg.position[4]
     joint_6_position = msg.position[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_p, j5_p, j6_p = self.translate_reading_for_diff_drive(joint_4_position, joint_5_position, joint_6_position)
+    j4_p, j5_p, j6_p = self.translate_to_diff_drive(joint_4_position, joint_5_position, joint_6_position)
 
     # map velocity to position
     joint_4_velocity = msg.velocity[3]
     joint_5_velocity = msg.velocity[4]
     joint_6_velocity = msg.velocity[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_v, j5_v, j6_v = self.translate_reading_for_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
+    j4_v, j5_v, j6_v = self.translate_to_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
     reponse = JointState()
     reponse.header.stamp = self.get_clock().now().to_msg()
     reponse.position = msg.position
@@ -102,14 +99,14 @@ class ControlerTranslatorNode(Node):
     joint_5_position = msg.position[4]
     joint_6_position = msg.position[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_p, j5_p, j6_p = self.tranlate_writing_for_diff_drive(joint_4_position, joint_5_position, joint_6_position)
+    j4_p, j5_p, j6_p = self.tranlate_from_diff_drive_to(joint_4_position, joint_5_position, joint_6_position)
 
     # map velocity to position
     joint_4_velocity = msg.velocity[3]
     joint_5_velocity = msg.velocity[4]
     joint_6_velocity = msg.velocity[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_v, j5_v, j6_v = self.tranlate_writing_for_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
+    j4_v, j5_v, j6_v = self.tranlate_from_diff_drive_to(joint_4_velocity, joint_5_velocity, joint_6_velocity)
     names = [
       "Rev1",
       "Rev2",

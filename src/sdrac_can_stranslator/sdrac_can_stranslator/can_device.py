@@ -41,17 +41,17 @@ class CanHat:
 
   def check_if_can_interface_up(self) -> bool:
     result = subprocess.run(['ip', 'addr', 'show', self.name_of_can_interface], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return result.returncode == 0
+    return "UP" in str(result.stdout)
   
   def log_info(self, msg, color=None):
     if self.logger:
-      self.logger.get_logger().info(msg)
+      self.logger.info(msg)
     else:
       print(f"{color if color else ''}{msg}{self.NC}")
   
   def log_error(self, msg, color=None):
     if self.logger:
-      self.logger.get_logger().error(msg)
+      self.logger.error(msg)
     else:
       print(f"{color if color else ''}{msg}{self.NC}")
 
@@ -130,7 +130,9 @@ class CanHat:
     self.__can_up_device()
     time.sleep(0.5)
     self.__can_config_txqueuelen()
-    time.sleep(0.5)
+    wait_time = 4
+    self.log_info(f"CAN waiting {wait_time} seconds for can-hat to start working!", self.GREEN)
+    time.sleep(wait_time)
   
 if __name__ == "__main__":
   can_device = CanHat()

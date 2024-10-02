@@ -105,7 +105,7 @@ class CanPublisher(Node):
       raise FileNotFoundError(msg)
     
     try:
-      can_starter = CanHat(name_of_can_interface=self.can_interface_name,bitrate=self.can_bitrate)
+      can_starter = CanHat(name_of_can_interface=self.can_interface_name,bitrate=self.can_bitrate,logger=self.get_logger())
       if not can_starter.check_if_can_interface_up():
         can_starter.init_can_interface()
     except ValueError as e:
