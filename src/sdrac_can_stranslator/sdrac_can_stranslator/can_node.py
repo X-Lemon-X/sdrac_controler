@@ -31,6 +31,7 @@ class CanPublisher(Node):
     self.declare_parameter('can_bitrate', 100000)
     self.declare_parameter('can_time_out', 0.006)
     self.can_db_file = self.get_parameter('can_db_file').get_parameter_value().string_value
+    self.get_logger().info(f"can_db_file: {self.can_db_file}")
     self.can_interface_name = self.get_parameter('can_interface_name').get_parameter_value().string_value
     self.can_bitrate = self.get_parameter('can_bitrate').get_parameter_value().integer_value
     self.can_time_out = self.get_parameter('can_time_out').get_parameter_value().double_value
