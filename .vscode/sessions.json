@@ -24,6 +24,7 @@
           "commands": [
             "source /opt/ros/humble/setup.bash",
             "colcon build --symlink-install && source install/local_setup.bash",
+            "python3 src/sdrac_can_stranslator/sdrac_can_stranslator/can_device.py",
             "candump can0"
           ]
         }

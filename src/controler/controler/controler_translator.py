@@ -56,7 +56,7 @@ class ControlerTranslatorNode(Node):
     in_5 = in_5 - rot_4
     in_6 = in_6 - rot_4
     # inverse of differential drive
-    rot_5 = -(in_5 - in_6)/2 
+    rot_5 = (in_5 - in_6)/2 
     rot_6 = (in_5 + in_6)/2
     return rot_4, rot_5, rot_6
   

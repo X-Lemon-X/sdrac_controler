@@ -130,7 +130,7 @@ class CanHat:
     self.__can_up_device()
     time.sleep(0.5)
     self.__can_config_txqueuelen()
-    wait_time = 4
+    wait_time = 0.5
     self.log_info(f"CAN waiting {wait_time} seconds for can-hat to start working!", self.GREEN)
     time.sleep(wait_time)
   
