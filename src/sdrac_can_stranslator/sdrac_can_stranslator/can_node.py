@@ -3,6 +3,7 @@ from rclpy.node import Node
 import cantools
 import can
 from sensor_msgs.msg import JointState 
+from  std_msgs.msg import String
 from diagnostic_msgs.msg import KeyValue, DiagnosticStatus, DiagnosticArray
 import os
 import sys
@@ -17,7 +18,6 @@ class CanPublisher(Node):
     self.publisher_joints = self.create_publisher(JointState, '/controls/sdrac/joint_geters', 10)
     self.publisher_status = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/status', 10)
     self.publisher_errors = self.create_publisher(DiagnosticArray, '/diagnostics/sdrac/errors', 10)
-
     
 
     self.sub_joint_set_callback = self.create_subscription(
@@ -26,6 +26,16 @@ class CanPublisher(Node):
       self.joint_set_callback,
       10
     )
+    
+    self.sub_set_control_mode_callback = self.create_subscription(
+      String,
+      '/controls/sdrac/control_mode',
+      self.control_mode_callback,
+      10
+    )
+
+
+
     self.declare_parameter('can_db_file', '/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc')
     self.declare_parameter('can_interface_name', 'can0')
     self.declare_parameter('can_bitrate', 100000)
@@ -71,15 +81,11 @@ class CanPublisher(Node):
 
     # self.start_can()
 
-
   def set_default_values(self):
     self.states = [ {'status':'emergency_stop'} for _ in self.get_axis_range() ]
     self.positions = [ float('nan') for _ in self.get_axis_range() ]
     self.velocities = [ float('nan') for _ in self.get_axis_range() ]
     self.errors = [ self.errors_empty() for _ in self.get_axis_range() ]
-
-  # def __exit__(self):
-  #   self.stop_can()
 
   def __del__(self):
     self.stop_can()
@@ -118,10 +124,12 @@ class CanPublisher(Node):
     self.konarms_can_messages = {}
     self.konarms_can_messages_id_to_msg = {}
     for i in self.get_axis_range():
-      self.konarms_can_messages[f'konarm_{i}_status'] = self.can_db.get_message_by_name(f'konarm_{i}_status')
       self.konarms_can_messages[f'konarm_{i}_set_pos'] = self.can_db.get_message_by_name(f'konarm_{i}_set_pos')
+      self.konarms_can_messages[f'konarm_{i}_set_control_mode'] = self.can_db.get_message_by_name(f'konarm_{i}_set_control_mode')
+      self.konarms_can_messages[f'konarm_{i}_status'] = self.can_db.get_message_by_name(f'konarm_{i}_status')
       self.konarms_can_messages[f'konarm_{i}_get_pos'] = self.can_db.get_message_by_name(f'konarm_{i}_get_pos')
       self.konarms_can_messages[f'konarm_{i}_get_errors'] = self.can_db.get_message_by_name(f'konarm_{i}_get_errors')
+      
       self.konarms_can_decode_functions[self.konarms_can_messages[f'konarm_{i}_status'].frame_id] = self.decode_status
       self.konarms_can_decode_functions[self.konarms_can_messages[f'konarm_{i}_get_pos'].frame_id] = self.decode_get_pos
       self.konarms_can_decode_functions[self.konarms_can_messages[f'konarm_{i}_get_errors'].frame_id] = self.decode_get_errors
@@ -131,6 +139,8 @@ class CanPublisher(Node):
       # Extract the number from the message name (e.g., 'konarm_1_status' -> 1)
       number = int(frame.name.split('_')[1])
       self.konarms_can_messages_id_to_number[frame.frame_id] = number
+
+    self.set_control_mode_qualified_modes = ['velocity_control','position_control','torque_control']
 
   def stop_can(self):
     if self.can_bus is not None:
@@ -275,8 +285,15 @@ class CanPublisher(Node):
     if len(msg.velocity) != self.konarm_axes:
       self.get_logger().error(f"Invalid number of velocities: {len(msg)}")
       return
+    
     data = [ { "position" : float(msg.position[i - 1]), "velocity" : float(msg.velocity[i - 1])} for i in self.get_axis_range()]  
     self.can_send('set_pos',data)
+
+  def control_mode_callback(self, msg:String):
+    if msg.data not in self.set_control_mode_qualified_modes:
+      self.get_logger().error(f"Invalid control mode: {msg.data}")
+    data = [ msg.data for _ in self.get_axis_range()]
+    self.can_send('set_control_mode',data)
 
 def main(args=None):
   rclpy.init(args=args)
