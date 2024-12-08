@@ -34,8 +34,6 @@ class CanPublisher(Node):
       10
     )
 
-
-
     self.declare_parameter('can_db_file', '/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc')
     self.declare_parameter('can_interface_name', 'can0')
     self.declare_parameter('can_bitrate', 100000)
@@ -140,7 +138,7 @@ class CanPublisher(Node):
       number = int(frame.name.split('_')[1])
       self.konarms_can_messages_id_to_number[frame.frame_id] = number
 
-    self.set_control_mode_qualified_modes = ['velocity_control','position_control','torque_control']
+    self.set_control_mode_qualified_modes = {'velocity_control':1,'position_control':2,'torque_control':3}
 
   def stop_can(self):
     if self.can_bus is not None:
@@ -290,9 +288,9 @@ class CanPublisher(Node):
     self.can_send('set_pos',data)
 
   def control_mode_callback(self, msg:String):
-    if msg.data not in self.set_control_mode_qualified_modes:
+    if msg.data not in self.set_control_mode_qualified_modes.keys():
       self.get_logger().error(f"Invalid control mode: {msg.data}")
-    data = [ msg.data for _ in self.get_axis_range()]
+    data = [ { "control_mode": msg.data} for _ in self.get_axis_range()]
     self.can_send('set_control_mode',data)
 
 def main(args=None):

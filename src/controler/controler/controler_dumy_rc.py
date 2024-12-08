@@ -4,6 +4,7 @@ import cantools
 import can
 from sensor_msgs.msg import JointState 
 from sensor_msgs.msg import Joy
+from  std_msgs.msg import String
 from diagnostic_msgs.msg import KeyValue, DiagnosticStatus, DiagnosticArray
 import os
 
@@ -26,9 +27,30 @@ class ControlerDumyRC(Node):
       self.joy_callback,
       10
     )
+    self.buttons_previous = [0,0,0,0,0,0,0,0]
+
+    self.publisher_control_mode_callback = self.create_publisher(String,'/controls/sdrac/control_mode',10)
 
   def joint_states_callback(self, msg: JointState):
     pass
+
+  def buttons_handler(self, buttons):
+    if buttons[2] != self.buttons_previous[2] and buttons[2] == 1:
+      msg = String()
+      msg.data = "velocity_control"
+      self.publisher_control_mode_callback.publish(msg)
+      self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
+    if buttons[3] != self.buttons_previous[3] and buttons[3] == 1:
+      msg = String()
+      msg.data = "position_control"
+      self.publisher_control_mode_callback.publish(msg)
+      self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
+    if buttons[4] != self.buttons_previous[4] and buttons[4] == 1:
+      msg = String()
+      msg.data = "torque_control"
+      self.publisher_control_mode_callback.publish(msg)
+      self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
+    self.buttons_previous = buttons
 
   def joy_callback(self, msg: Joy):
     if len(msg.axes) != 6:
@@ -45,6 +67,7 @@ class ControlerDumyRC(Node):
     positons = [ 0.0 for _ in range(6)]
     msg_joint.position = positons
     # self.get_logger().info(f"joy message: \"{msg_joint}\"")
+    self.buttons_handler(msg.buttons)
     self.publisher_joints.publish(msg_joint)
 
 
