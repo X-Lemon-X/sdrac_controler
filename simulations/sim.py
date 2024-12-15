@@ -3,6 +3,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from sympy import symbols, Matrix, sin, cos, pi, Symbol, eye
 import sympy as sp
+import time
 
 
 class KinamticsMatrices:
@@ -121,7 +122,7 @@ class ForwardKinematic6axisModel:
     self.q6 = Symbol('q6')
 
   def get_not_theretiacl_max_length(self):
-    return self.link_legnth_2 + self.link_legnth_3 + self.link_legnth_4
+    return self.link_legnth_2 + self.link_legnth_3
 
   def A_0_1(self,q):
     return KinamticsMatrices.rot_z(q)@KinamticsMatrices.trans_z(self.link_legnth_1)@KinamticsMatrices.rot_x(-np.pi/2)
@@ -183,11 +184,11 @@ class ForwardKinematic6axisModel:
     return self.a_0_6()[:3,:3]
 
 
-  def get_jakobian(self):
-    pos = self.get_pos_equasion()
-    rot = self.get_rotation_matrix_equasion()
-    q = Matrix([self.q1,self.q2,self.q3,self.q4,self.q5,self.q6])
-    return pos.jacobian(q), rot.jacobian(q)
+  # def get_jakobian(self):
+  #   pos = self.get_pos_equasion()
+  #   rot = self.get_rotation_matrix_equasion()
+  #   q = Matrix([self.q1,self.q2,self.q3,self.q4,self.q5,self.q6])
+  #   return pos.jacobian(q), rot.jacobian(q)
 
 class Kinematic6axisVisaulization:
   def __init__(self, model:ForwardKinematic6axisModel,arrow_length=0.4):
@@ -199,6 +200,17 @@ class Kinematic6axisVisaulization:
     self.q5 = 0
     self.q6 = 0
     self.arrow_length = arrow_length
+
+
+    self.fig = plt.figure()
+    self.ax = self.fig.add_subplot(111, projection='3d')
+    self.ax.set_xlim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
+    self.ax.set_ylim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
+    self.ax.set_zlim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
+    self.ax.set_xlabel('X')
+    self.ax.set_ylabel('Y')
+    self.ax.set_zlabel('Z')
+
 
   def set_angles(self, q1,q2,q3,q4,q5,q6):
     self.q1 = q1
@@ -283,9 +295,10 @@ class Kinematic6axisVisaulization:
 
     return values, transformations
   
-  def plot(self,transformations=None):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+  def __plot(self,transformations=None):
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    self.ax.clear()
 
     if transformations is None:
       transformations = self.get_transformation_matrices(self.q1,self.q2,self.q3,self.q4,self.q5,self.q6)
@@ -297,15 +310,20 @@ class Kinematic6axisVisaulization:
       ys.append(T[1, 3])
       zs.append(T[2, 3])
       # Plot the XYZ arrows
-      self._plot_arrows(ax, T,i)
+      self._plot_arrows(self.ax, T,i)
 
-    ax.plot(xs, ys, zs, marker='o')
-    ax.set_xlim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
-    ax.set_ylim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
-    ax.set_zlim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
+    self.ax.plot(xs, ys, zs, marker='o')
+    self.ax.set_xlim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
+    self.ax.set_ylim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
+    self.ax.set_zlim([-self.model.get_not_theretiacl_max_length(), self.model.get_not_theretiacl_max_length()])
+    self.ax.set_xlabel('X')
+    self.ax.set_ylabel('Y')
+    self.ax.set_zlabel('Z')
+    # plt.show()
+
+  def plot(self,transformations=None):  
+    self.ax.clear()
+    self.__plot(transformations)
     plt.show()
 
   def _plot_arrows(self, ax, T,num=0):
@@ -320,6 +338,23 @@ class Kinematic6axisVisaulization:
     ax.text(*(origin + y_dir * self.arrow_length), f'Y{num}', color='g')
     ax.text(*(origin + z_dir * self.arrow_length), f'Z{num}', color='b')
 
+  def __play_plot(self, joints_values,frame_rate=0.5):
+    for joint_set in joints_values:
+      self.set_angles(*joint_set)
+      self.__plot()
+      plt.pause(frame_rate)
+
+  def play_plot(self, joints_values, play_in_loop=False, frame_rate=0.5):
+    while True:
+      self.__play_plot(joints_values,frame_rate)
+      if not play_in_loop:
+        break
+    
+    if not play_in_loop:
+      plt.show()
+
+    
+    
 
 
 if __name__=='__main__':
@@ -328,16 +363,19 @@ if __name__=='__main__':
 
   pos =  model.get_pos_equasion()
   rot = model.get_rotation_matrix_equasion()
-  jaco = model.get_jakobian()
   print(pos)
   print(rot)
-  print(jaco)
 
   visualizer = Kinematic6axisVisaulization(model,arrow_length=40)
   h = np.pi/2
-  visualizer.set_angles(0,-h -0.3 ,h , h ,h,0)
-  visualizer.plot()
-
+  # visualizer.set_angles(0,-h -0.3 ,h , h ,h,0)
+  # visualizer.plot()
+  positions = []
+  for a in range(0,20):
+    positions.append((0, 0, a*np.pi/20, a*np.pi/20, h, 0),)
+  positions += positions[::-1]
+      
+  visualizer.play_plot(positions,play_in_loop=True,frame_rate=0.1)
 
 
   # simplified_equation = simplify(equasion)

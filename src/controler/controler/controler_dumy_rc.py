@@ -34,23 +34,35 @@ class ControlerDumyRC(Node):
   def joint_states_callback(self, msg: JointState):
     pass
 
+  def check_if_button_pressed(self, buttons, index):
+    pressed = False
+    if buttons[index] != self.buttons_previous[index] and buttons[index] == 1:
+      pressed = True
+
+    self.buttons_previous[index] = buttons[index]
+    return pressed
+
   def buttons_handler(self, buttons):
     msg = None
-    if buttons[2] != self.buttons_previous[2] and buttons[2] == 1:
+    if self.check_if_button_pressed(buttons, 2):
       msg = String()
       msg.data = "velocity_control"
       self.publisher_control_mode_callback.publish(msg)
       self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
-    if buttons[3] != self.buttons_previous[3] and buttons[3] == 1:
+    
+    if self.check_if_button_pressed(buttons, 3):
       msg = String()
       msg.data = "position_control"
       self.publisher_control_mode_callback.publish(msg)
       self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
-    if buttons[4] != self.buttons_previous[4] and buttons[4] == 1:
+    
+    if self.check_if_button_pressed(buttons, 4):
       msg = String()
       msg.data = "torque_control"
       self.publisher_control_mode_callback.publish(msg)
       self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
+
+    
     self.buttons_previous = buttons
 
   def joy_callback(self, msg: Joy):
