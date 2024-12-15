@@ -1,9 +1,8 @@
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-from sympy import symbols, Matrix, sin, cos, pi, simplify, trigsimp, Abs, Eq, Symbol, ones, zeros, eye
-from sympy import radsimp
-from sympy import latex
+from sympy import symbols, Matrix, sin, cos, pi, Symbol, eye
+import sympy as sp
 
 
 class KinamticsMatrices:

@@ -5,7 +5,37 @@ import time
 import rclpy
 from rclpy.node import Node
 
+
 class CanHat:
+  r"""
+    script to automatically activate and setup CANable-MKS interface on linux machines.
+    
+
+    Parameters
+    ==========
+    name_of_can_interface : str
+        Name of the CAN interface to init the can with.
+    
+    bitrate : int
+        Bitrate of the CAN interface. in bits per second.
+        available bitrates are: 1000000, 800000, 500000, 250000, 125000, 100000, 50000, 20000, 10000
+
+    logger : logging.Logger
+      ros2 logger object
+
+    Examples
+    ========
+        >>> from can_device import CanHat
+        >>> can_device = CanHat()
+        >>> can_device.init_can_interface()
+
+    Tips
+    ====
+    - You can run this script with sudo to avoid permission errors. or the script will ask you to enter your password.
+    - or just run thsi script directly it will probably work.
+    >>> python3 can_device.py
+  """
+
   RED = '\033[0;31m'
   GREEN = '\033[0;32m'
   BLUE = '\033[0;34m'
@@ -126,11 +156,11 @@ class CanHat:
     else:
       self.log_info(f"Can-hat found on: {device_path}", self.GREEN)
     self.__can_set_up_interface(device_path)
-    time.sleep(0.5)
+    time.sleep(0.1)
     self.__can_up_device()
-    time.sleep(0.5)
+    time.sleep(0.1)
     self.__can_config_txqueuelen()
-    wait_time = 0.5
+    wait_time = 0.1
     self.log_info(f"CAN waiting {wait_time} seconds for can-hat to start working!", self.GREEN)
     time.sleep(wait_time)
   
