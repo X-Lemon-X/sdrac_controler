@@ -35,6 +35,7 @@ class ControlerDumyRC(Node):
     pass
 
   def buttons_handler(self, buttons):
+    msg = None
     if buttons[2] != self.buttons_previous[2] and buttons[2] == 1:
       msg = String()
       msg.data = "velocity_control"
