@@ -182,8 +182,75 @@ class ForwardKinematic6axisModel:
 
   def get_rotation_matrix_equasion(self):
     return self.a_0_6()[:3,:3]
+  
+  def get_representation_angles(self):
+    rots = self.get_rotation_matrix_equasion()
+    a = sp.symbols('a')
+    p = sp.symbols('p')
+    y = sp.symbols('y')
+    zyz = KinamticsMatrices.EulerZYZToRotationMatrix(a,p,y)
+    c31 = rots[2,0]
+    c32 = rots[2,1]
+    c33 = rots[2,2]
+    c23 = rots[1,2]
+    c13 = rots[0,2]
+    z31 = zyz[2, 0]
+    z32 = zyz[2, 1]
+    z33 = zyz[2, 2]
+    z23 = zyz[1, 2]
+    z13 = zyz[0, 2]
+    # first equation make into set of equations
+    # c32 = z32 
+    # c33 = z33
+    # c23 = z23
+    # now clalucalte r,p,y as 
+    equations = [
+      # sp.Eq(c31, z31),
+      # sp.Eq(c32, z32),
+      sp.Eq(c33, z33)
+      # sp.Eq(c23, z23),
+      # sp.Eq(c23, z23),
+    ]
+    solutions = sp.solve(equations, (p))
+    p1 = solutions[0][0]
+    p2 = solutions[1][0]
+    solutions = sp.solve([sp.Eq(c23, sp.sin(p1)*sp.cos(y))], (y))
+    y1 = solutions[0][0]
+    y2 = solutions[1][0]
+    solutions = sp.solve([sp.Eq(c23, sp.sin(p2)*sp.cos(y))], (y))
+    y3 = solutions[0][0]
+    y4 = solutions[1][0]
+    solutions = sp.solve([sp.Eq(c32, sp.sin(p1)*sp.sin(a))], (a))
+    a1 = solutions[0][0]
+    a2 = solutions[1][0]
+    solutions = sp.solve([sp.Eq(c32, sp.sin(p2)*sp.sin(a))], (a))
+    a3 = solutions[0][0]
+    a4 = solutions[1][0]
+    solutions = sp.solve([sp.Eq(c31, sp.sin(p1)*sp.cos(a))], (a))
+    aa1 = solutions[0][0]
+    aa2 = solutions[1][0]
+    solutions = sp.solve([sp.Eq(c31, sp.sin(p2)*sp.cos(a))], (a))
+    aa3 = solutions[0][0]
+    aa4 = solutions[1][0]
 
+    solutions = sp.solve([sp.Eq(c13, -sp.sin(p1)*sp.cos(y))], (y))
+    yy1 = solutions[0][0]
+    yy2 = solutions[1][0]
+    solutions = sp.solve([sp.Eq(c13, -sp.sin(p2)*sp.cos(y))], (y))
+    yy3 = solutions[0][0]
+    yy4 = solutions[1][0]
+    solutions = [
+      p1, p2, y1, y2, y3, y4, a1, a2, a3, a4, aa1, aa2, aa3, aa4, yy1, yy2, yy3, yy4
+    ]
+    # r_solution = solutions[r]
+    # p_solution = solutions[p]
+    # y_solution = solutions[y]
+    # print(f"Roll (r): {r_solution}")
+    # print(f"Pitch (p): {p_solution}")
+    # print(f"Yaw (y): {y_solution}")
+    return solutions
 
+  
   # def get_jakobian(self):
   #   pos = self.get_pos_equasion()
   #   rot = self.get_rotation_matrix_equasion()
@@ -363,8 +430,10 @@ if __name__=='__main__':
 
   pos =  model.get_pos_equasion()
   rot = model.get_rotation_matrix_equasion()
+  sol = model.get_representation_angles()
   print(pos)
   print(rot)
+  print(sol)
 
   visualizer = Kinematic6axisVisaulization(model,arrow_length=40)
   h = np.pi/2
@@ -375,7 +444,8 @@ if __name__=='__main__':
     positions.append((0, 0, a*np.pi/20, a*np.pi/20, h, 0),)
   positions += positions[::-1]
       
-  visualizer.play_plot(positions,play_in_loop=True,frame_rate=0.1)
+  # visualizer.play_plot(positions,play_in_loop=True,frame_rate=0.1)
+
 
 
   # simplified_equation = simplify(equasion)
