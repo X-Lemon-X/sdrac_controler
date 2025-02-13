@@ -11,6 +11,9 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 from .can_device import CanHat
 
+def resolve_relative_path(relative_path):
+  return os.path.abspath(os.path.join(os.path.dirname(__file__), relative_path))
+
 class CanPublisher(Node):
   def __init__(self):
     super().__init__('can_node')
@@ -34,7 +37,7 @@ class CanPublisher(Node):
       10
     )
 
-    self.declare_parameter('can_db_file', '/home/lemonx/it/sdrac_controler/src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc')
+    self.declare_parameter('can_db_file', resolve_relative_path('ariadna_constants/can_messages/output/can.dbc'))
     self.declare_parameter('can_interface_name', 'can0')
     self.declare_parameter('can_bitrate', 100000)
     self.declare_parameter('can_time_out', 0.006)
