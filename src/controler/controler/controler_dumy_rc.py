@@ -23,7 +23,7 @@ class ControlerDumyRC(Node):
 
     self.sub_joint_states = self.create_subscription(
       Joy,
-      'joy',
+      '/sdrac/joy',
       self.joy_callback,
       10
     )
