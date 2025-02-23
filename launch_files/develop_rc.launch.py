@@ -9,7 +9,7 @@ def resolve_relative_path(relative_path):
 
 def generate_launch_description():
     can_dbc_file = resolve_relative_path("../src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/can_messages/output/can.dbc")
-    print(can_dbc_file)
+    print(f"CAN FILE: {can_dbc_file}")
     return LaunchDescription([
         Node(
             package='controler',

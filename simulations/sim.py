@@ -1,7 +1,10 @@
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-from sympy import symbols, Matrix, sin, cos, pi, Symbol, eye
+import matplotlib
+
+
+from sympy import symbols, Matrix, sin, cos, pi, Symbol, eye, acos ,sqrt, asin
 import sympy as sp
 import time
 
@@ -16,6 +19,15 @@ class KinamticsMatrices:
       [0, 0, 0, 1]
     ])
   
+  @staticmethod
+  def rot_y(q):
+    return np.array([
+      [np.cos(q), 0, np.sin(q), 0],
+      [0, 1, 0, 0],
+      [-np.sin(q), 0, np.cos(q), 0],
+      [0,0,0,1]
+    ])
+
   @staticmethod
   def rot_z(q):
     return np.array([
@@ -103,9 +115,15 @@ class KinamticsMatrices:
     return a[:3,:3]
   
   @staticmethod
-  def EulerZYZToRotationMatrix(alpha, beta, gamma):
+  def EulerZYZToMatrix(alpha, beta, gamma):
     a = KinamticsMatrices.Rz(alpha) @ KinamticsMatrices.Ry(beta) @ KinamticsMatrices.Rz(gamma)
-    return a[:3,:3]
+    return a
+
+
+  @staticmethod
+  def EulerZYZToRotationMatrix(alpha, beta, gamma):
+    # a = KinamticsMatrices.Rz(alpha) @ KinamticsMatrices.Ry(beta) @ KinamticsMatrices.Rz(gamma)
+    return KinamticsMatrices.EulerZYZToMatrix(alpha, beta, gamma)[:3,:3]
 
 
 class ForwardKinematic6axisModel:
@@ -192,56 +210,58 @@ class ForwardKinematic6axisModel:
     c31 = rots[2,0]
     c32 = rots[2,1]
     c33 = rots[2,2]
-    c23 = rots[1,2]
     c13 = rots[0,2]
-    z31 = zyz[2, 0]
-    z32 = zyz[2, 1]
-    z33 = zyz[2, 2]
-    z23 = zyz[1, 2]
-    z13 = zyz[0, 2]
+    c23 = rots[1,2]
+
+    z23 =  zyz[1,2]
+    z13 =  zyz[0,2]
+    z31 =  zyz[2,0]
+    z32 =  zyz[2,1]
+    z33 =  zyz[2,2]
     # first equation make into set of equations
     # c32 = z32 
     # c33 = z33
     # c23 = z23
     # now clalucalte r,p,y as 
     equations = [
-      # sp.Eq(c31, z31),
-      # sp.Eq(c32, z32),
-      sp.Eq(c33, z33)
-      # sp.Eq(c23, z23),
-      # sp.Eq(c23, z23),
+      sp.Eq(c31, z31),
+      sp.Eq(c32, z32),
+      sp.Eq(c33, z33),
+      sp.Eq(c23, z23),
+      sp.Eq(c13, z13),
     ]
-    solutions = sp.solve(equations, (p))
-    p1 = solutions[0][0]
-    p2 = solutions[1][0]
-    solutions = sp.solve([sp.Eq(c23, sp.sin(p1)*sp.cos(y))], (y))
-    y1 = solutions[0][0]
-    y2 = solutions[1][0]
-    solutions = sp.solve([sp.Eq(c23, sp.sin(p2)*sp.cos(y))], (y))
-    y3 = solutions[0][0]
-    y4 = solutions[1][0]
-    solutions = sp.solve([sp.Eq(c32, sp.sin(p1)*sp.sin(a))], (a))
-    a1 = solutions[0][0]
-    a2 = solutions[1][0]
-    solutions = sp.solve([sp.Eq(c32, sp.sin(p2)*sp.sin(a))], (a))
-    a3 = solutions[0][0]
-    a4 = solutions[1][0]
-    solutions = sp.solve([sp.Eq(c31, sp.sin(p1)*sp.cos(a))], (a))
-    aa1 = solutions[0][0]
-    aa2 = solutions[1][0]
-    solutions = sp.solve([sp.Eq(c31, sp.sin(p2)*sp.cos(a))], (a))
-    aa3 = solutions[0][0]
-    aa4 = solutions[1][0]
+    solutions = sp.solve(equations, [p,a,y])
+    # solutions = sp.solve(equations, (p))
+    # p1 = solutions[0][0]
+    # p2 = solutions[1][0]
+    # solutions = sp.solve([sp.Eq(c23, sp.sin(p1)*sp.cos(y))], (y))
+    # y1 = solutions[0][0]
+    # y2 = solutions[1][0]
+    # solutions = sp.solve([sp.Eq(c23, sp.sin(p2)*sp.cos(y))], (y))
+    # y3 = solutions[0][0]
+    # y4 = solutions[1][0]
+    # solutions = sp.solve([sp.Eq(c32, sp.sin(p1)*sp.sin(a))], (a))
+    # a1 = solutions[0][0]
+    # a2 = solutions[1][0]
+    # solutions = sp.solve([sp.Eq(c32, sp.sin(p2)*sp.sin(a))], (a))
+    # a3 = solutions[0][0]
+    # a4 = solutions[1][0]
+    # solutions = sp.solve([sp.Eq(c31, sp.sin(p1)*sp.cos(a))], (a))
+    # aa1 = solutions[0][0]
+    # aa2 = solutions[1][0]
+    # solutions = sp.solve([sp.Eq(c31, sp.sin(p2)*sp.cos(a))], (a))
+    # aa3 = solutions[0][0]
+    # aa4 = solutions[1][0]
 
-    solutions = sp.solve([sp.Eq(c13, -sp.sin(p1)*sp.cos(y))], (y))
-    yy1 = solutions[0][0]
-    yy2 = solutions[1][0]
-    solutions = sp.solve([sp.Eq(c13, -sp.sin(p2)*sp.cos(y))], (y))
-    yy3 = solutions[0][0]
-    yy4 = solutions[1][0]
-    solutions = [
-      p1, p2, y1, y2, y3, y4, a1, a2, a3, a4, aa1, aa2, aa3, aa4, yy1, yy2, yy3, yy4
-    ]
+    # solutions = sp.solve([sp.Eq(c13, -sp.sin(p1)*sp.cos(y))], (y))
+    # yy1 = solutions[0][0]
+    # yy2 = solutions[1][0]
+    # solutions = sp.solve([sp.Eq(c13, -sp.sin(p2)*sp.cos(y))], (y))
+    # yy3 = solutions[0][0]
+    # yy4 = solutions[1][0]
+    # solutions = [
+    #   p1, p2, y1, y2, y3, y4, a1, a2, a3, a4, aa1, aa2, aa3, aa4, yy1, yy2, yy3, yy4
+    # ]
     # r_solution = solutions[r]
     # p_solution = solutions[p]
     # y_solution = solutions[y]
@@ -249,6 +269,49 @@ class ForwardKinematic6axisModel:
     # print(f"Pitch (p): {p_solution}")
     # print(f"Yaw (y): {y_solution}")
     return solutions
+
+
+  def calculate_angles_for_euler(self):
+    q1 = self.q1
+    q2 = self.q2
+    q3 = self.q3
+    q4 = self.q4
+    q5 = self.q5
+    q6 = self.q6
+
+    sol1 = (acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)),
+     q1 -acos(-(sin(q1)*sin(q4)*sin(q5) + sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) - cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))) + 2*pi,
+      asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))) + pi)
+
+    sol2 = (acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)),
+      -acos(-(sin(q1)*sin(q4)*sin(q5) + sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) - cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))) + 2*pi,
+      -asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))))
+
+    sol5 = (acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)),
+      acos((-sin(q1)*sin(q4)*sin(q5) - sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) + cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))),
+      asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))) + pi)
+
+    sol6 =(acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)),
+      acos((-sin(q1)*sin(q4)*sin(q5) - sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) + cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))),
+      -asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))))
+
+    sol3 = (-acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)) + 2*pi,
+      -acos((sin(q1)*sin(q4)*sin(q5) + sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) - cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))) + 2*pi,
+      pi - asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))))
+
+    sol4 = (-acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)) + 2*pi,
+      -acos((sin(q1)*sin(q4)*sin(q5) + sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) - cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))) + 2*pi,
+      asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))))
+
+    sol7 = (-acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)) + 2*pi,
+      acos((sin(q1)*sin(q4)*sin(q5) + sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) - cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))),
+      pi - asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))))
+
+    sol8 = (-acos(-sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5)) + 2*pi,
+      acos((sin(q1)*sin(q4)*sin(q5) + sin(q5)*sin(q2 + q3)*cos(q1)*cos(q4) - cos(q1)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))),
+      asin((sin(q4)*cos(q6)*cos(q2 + q3) - sin(q5)*sin(q6)*sin(q2 + q3) + sin(q6)*cos(q4)*cos(q5)*cos(q2 + q3))/sqrt(-(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) - 1)*(sin(q5)*cos(q4)*cos(q2 + q3) + sin(q2 + q3)*cos(q5) + 1))))
+
+    return [sol1, sol2, sol3, sol4, sol5, sol6, sol7, sol8]
 
   
   # def get_jakobian(self):
@@ -412,6 +475,7 @@ class Kinematic6axisVisaulization:
       plt.pause(frame_rate)
 
   def play_plot(self, joints_values, play_in_loop=False, frame_rate=0.5):
+    # matplotlib.use('qt5agg')   
     while True:
       self.__play_plot(joints_values,frame_rate)
       if not play_in_loop:
@@ -430,12 +494,12 @@ if __name__=='__main__':
 
   pos =  model.get_pos_equasion()
   rot = model.get_rotation_matrix_equasion()
-  sol = model.get_representation_angles()
+  # sol = model.get_representation_angles()
   print(pos)
   print(rot)
-  print(sol)
+  # print(sol)
 
-  visualizer = Kinematic6axisVisaulization(model,arrow_length=40)
+  visualizer = Kinematic6axisVisaulization(model,arrow_length=150)
   h = np.pi/2
   # visualizer.set_angles(0,-h -0.3 ,h , h ,h,0)
   # visualizer.plot()
@@ -445,8 +509,39 @@ if __name__=='__main__':
   positions += positions[::-1]
       
   # visualizer.play_plot(positions,play_in_loop=True,frame_rate=0.1)
+  # visualizer.set_angles(0,0,0,0,0,0)
+  # visualizer.plot()
+  visualizer = Kinematic6axisVisaulization(model,arrow_length=40)
 
+  sol = model.calculate_angles_for_euler()
+  s = sol[7]
+  # for s in sol:
+  print(s)
+  a = s[0]
+  b = s[1]
+  g = s[2]
+  q1 = 0
+  q2 = 0
+  q3 = 0
+  q4 = 0
+  q5 = 0
+  q6 = 0
+  substitutes = {
+    sp.symbols('q1'): q1,
+    sp.symbols('q2'): q2,
+    sp.symbols('q3'): q3,
+    sp.symbols('q4'): q4,
+    sp.symbols('q5'): q5,
+    sp.symbols('q6'): q6
+  }
+  a = a.subs(substitutes)
+  b = b.subs(substitutes)
+  g = g.subs(substitutes)
+  eul=  KinamticsMatrices.rot_z(float(a))@KinamticsMatrices.rot_y(float(b))@KinamticsMatrices.rot_z(float(g))
+  print(f"alpha={a} beta={b} gamma={g}")
 
+  visualizer.set_angles(q1,q2,q3,q4,q5,q6)
+  visualizer.plot([eul])
 
   # simplified_equation = simplify(equasion)
   # print(simplified_equation)
