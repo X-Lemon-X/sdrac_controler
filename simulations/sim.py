@@ -210,6 +210,14 @@ class Kinematic6axisModel:
     self.tcp_y = y
     self.tcp_z = z
 
+  def set_pos_and_rot(self, x,y,z, roll, pitch, yaw):
+    self.pos_x = x
+    self.pos_y = y
+    self.pos_z = z
+    self.rot_roll = roll
+    self.rot_pitch = pitch
+    self.rot_yaw = yaw
+
   def get_angles(self):
     return self.q1_rad, self.q2_rad, self.q3_rad, self.q4_rad, self.q5_rad, self.q6_rad
 
