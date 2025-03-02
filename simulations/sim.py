@@ -15,7 +15,7 @@ def eq(a, b, epsilon=1e-5):
   return abs(a-b) < epsilon
 
 def beautify(a):
-  if a < 0.00001:
+  if abs(a) < 1e-7:
     return 0
   return a
  
@@ -446,6 +446,112 @@ class Kinematic6axisModel:
     z = self.transfotmation_current_a06[2,3].evalf()
     return x,y,z
 
+  def _get_circle_intersections(self,x0, y0, r0, x1, y1, r1):
+    # circle 1: (x0, y0), radius r0
+    # circle 2: (x1, y1), radius r1
+    d=sympy.sqrt((x1-x0)**2 + (y1-y0)**2).evalf()
+    # non intersecting
+    if d > r0 + r1 :
+      return {}
+    # One circle within other
+    if d < abs(r0-r1):
+      return {}
+    # coincident circles
+    if d == 0 and r0 == r1:
+      return {}
+    else:
+      a=(r0**2-r1**2+d**2)/(2*d)
+      h=sympy.sqrt(r0**2-a**2).evalf()
+      x2=x0+a*(x1-x0)/d   
+      y2=y0+a*(y1-y0)/d   
+      x3=x2+h*(y1-y0)/d     
+      y3=y2-h*(x1-x0)/d 
+      x4=x2-h*(y1-y0)/d
+      y4=y2+h*(x1-x0)/d
+      return x3, y3, x4, y4
+
+  def __angle_for_q2(self,x,y):
+    s2 = (y-self.link_legnth_1)/self.link_legnth_2
+    c2 = x/self.link_legnth_2
+    q2 = None
+    q21 = sympy.asin(s2)
+    q22 = np.pi - q21
+    if eq(sympy.cos(q21).evalf(),c2):
+      q2 = q21
+    if eq(sympy.cos(q22).evalf(),c2):
+      q2 = q22
+    return -q2
+
+  def __angle_between_vectors(self,vector1, vector2):
+    # vector1 = sympy.Matrix([axis_x-x, axis_y-y,0])
+    # vector2 = sympy.Matrix([x, y-model.link_legnth_1,0])
+    dot_product = vector1.dot(vector2)
+    magnitude1 = vector1.norm()
+    magnitude2 = vector2.norm()
+    cos_theta = dot_product / (magnitude1 * magnitude2)
+    theta = sympy.acos(cos_theta)
+    
+    if vector2[0] == 0 and vector2[1] >= 0:
+      return theta
+    elif vector2[0] == 0 and vector2[1] < 0:
+      return np.pi - theta
+    a = (vector2[1])/(vector2[0])
+    y_res = a*(vector1[0]) 
+    y_res2 = -a*(vector1[0])
+    angle = theta
+    if vector1[1] <= y_res  and vector1[1] >= y_res2 or a >= 1e+7: # first quarter
+      angle = theta
+    elif vector1[1] < y_res  and vector1[1] < y_res2: # second quarter
+      angle = np.pi - theta
+    elif vector1[1] > y_res  and vector1[1] < y_res2: # third quarter
+      angle = np.pi + theta
+    elif vector1[1] > y_res  and vector1[1] > y_res2: # fourth quarter
+      angle = 2*np.pi - theta
+    return angle
+
+  def get_q1q2q3_angles_for_pos(self):
+    x = self.pos_x
+    y = 0
+    z = 520
+    ra = 0
+    rp = np.pi/2
+    ry = np.pi
+    # caluclate tool correction for final position
+    zyz = KinamticsMatrices.EulerZYZToMatrix(ra,rp,ry).evalf()
+    transfrom_tcp = zyz @ KinamticsMatrices.Tx(self.tcp_x) @ KinamticsMatrices.Ty(self.tcp_y) @ KinamticsMatrices.Tz(self.tcp_z + self.link_legnth_4) 
+    tcpx = transfrom_tcp[0,3]
+    tcpy = transfrom_tcp[1,3]
+    tcpz = transfrom_tcp[2,3]
+    axis_x = x - tcpx
+    axis_y = y - tcpy
+    axis_z = z - tcpz
+    p = (axis_x**2 + axis_y**2)**0.5
+    x1,y1,x2,y2 = self._get_circle_intersections( 0,self.link_legnth_1,self.link_legnth_2, p,axis_z,self.link_legnth_3)
+    q21 = self.__angle_for_q2(x1,y1)
+    q22 = self.__angle_for_q2(x2,y2)
+    x1 = beautify(x1)
+    y1 = beautify(y1)
+    x2 = beautify(x2)
+    y2 = beautify(y2)
+
+    vector1 =  sympy.Matrix([p-x1, axis_z-y1,0])
+    vector2 = sympy.Matrix([x1, y1-self.link_legnth_1,0])
+    q31 = self.__angle_between_vectors(vector1,vector2)
+
+    vector1 =  sympy.Matrix([p-x2, axis_z-y2,0])
+    vector2 = sympy.Matrix([x2, y2-self.link_legnth_1,0])
+    q32 = self.__angle_between_vectors(vector1,vector2)
+
+    vector1 =  sympy.Matrix([axis_x, axis_y,0])
+    vector2 = sympy.Matrix([2,0,0])
+    q1 = self.__angle_between_vectors(vector1,vector2)
+    
+    solutions = [
+      (q1,q21,q31),
+      (q1,q22,q32)
+    ]
+    return solutions
+  
   def get_inverse_kinematics_solutions(self, x,y,z, roll, pitch, yaw):
     return []
 
