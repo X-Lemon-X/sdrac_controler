@@ -126,6 +126,21 @@ class ControlerXYZ(Node):
     msg_conmtrol_mode.data = "position_control"
     self.publisher_control_mode_callback.publish(msg_conmtrol_mode)
 
+  def pick_closest_value(self,values, solutions):
+    distance_min = 1e10
+    retun_value = ()
+    i = 0
+    for s in solutions:
+      dist = 0
+      for a in range(len(values)):
+        dist += abs(values[a] - s[a])
+      if dist <= distance_min:
+        distance_min = dist
+        retun_value = s
+      i += 1
+      self.get_logger().info(f"Solution {i}/{len(solutions)}: {s}")
+    return retun_value
+
   def pick_shortest_path(self, angle_target, angle_current):
     dist = abs(angle_target - angle_current)
     dist2 =abs( ( angle_target - 2*numpy.pi) - angle_current)
@@ -158,9 +173,9 @@ class ControlerXYZ(Node):
     sol = self.model_pos.get_euler_zyz_angles_solutions()
     x ,y, z = self.model_pos.get_cordinates()
     roll, pitch, yaw = sol[0]
-    
 
     if not self.first_pos_callculated:
+      # ro,pi,ya = self.pick_closest_value([0,0,0],sol)
 
       self.get_logger().info("First position callculated")
       self.pos_x_target = x
@@ -172,6 +187,10 @@ class ControlerXYZ(Node):
       self.rot_yaw_target = yaw
       self.first_pos_callculated = True
 
+    # roll,pitch,yaw = self.pick_closest_value((self.rot_roll_target, self.rot_pitch_target, self.rot_yaw_target), sol)
+    # self.rot_roll_target = roll
+    # self.rot_pitch_target = pitch
+    # self.rot_yaw_current = yaw
 
     increment_pos = self.increase_value_pos_param.get_parameter_value().double_value
     increment_rot = self.increase_value_rot_param.get_parameter_value().double_value
@@ -213,7 +232,7 @@ class ControlerXYZ(Node):
 
     self.get_logger().info(
       f"""
-        Current X: {x}, Y: {y}, Z: {z}, Roll: {roll}, Pitch: {pitch}, Yaw: {yaw} 
+        Current X: {x}, Y: {y}, Z: {z}, Roll: {round(roll,4)}, Pitch: {round(pitch,4)}, Yaw: {round(yaw,4)} Euler: {len(sol)} 
         Current rot: q1: {round(self.q1,3)}, q2: {round(self.q2,3)}, q3: {round(self.q3,3)}, q4: {round(self.q4,3)}, q5: {round(self.q5,3)}, q6: {round(self.q6,3)}
         Target X: {self.pos_x_target}, Y: {self.pos_y_target}, Z: {self.pos_z_target}, Roll: {self.rot_roll_target}, Pitch: {self.rot_pitch_target}, Yaw: {self.rot_yaw_target}
         Target rot: q1: {round(q1,3)}, q2: {round(q2,3)}, q3: {round(q3,3)}, q4: {round(q4,3)}, q5: {round(q5,3)}, q6: {round(q6,3)}

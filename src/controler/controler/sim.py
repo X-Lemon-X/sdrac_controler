@@ -341,7 +341,7 @@ class Kinematic6axisModel:
     sp1 = sin(p1)
     y12 = []
     a12 = []
-    if sp1 <= 1e-5: # for p = 0 or p = pi |  Case for p = 0
+    if abs(sp1) <= 1e-5: # for p = 0 or p = pi |  Case for p = 0
       a1 = 0 # we set a to 0
       a2 = 0 #
       y1 = acos(A).evalf()
@@ -384,7 +384,7 @@ class Kinematic6axisModel:
     sp2 = sin(p2).evalf()
     y34 = []
     a34 = []
-    if sp2 <= 1e-5: # for p = 0 or p = pi |  Case for p = pi
+    if abs(sp2) <= 1e-5: # for p = 0 or p = pi |  Case for p = pi
       a3 = 0 # we set a to 0
       a4 = 0 #
       y3 = asin(D).evalf()
@@ -610,7 +610,7 @@ class Kinematic6axisModel:
       sp1 = sin(p1).evalf()
       y12 = []
       a12 = []
-      if sp1 <= 1e-5: # for p = 0 or p = pi |  Case for p = 0
+      if abs(sp1) <= 1e-5: # for p = 0 or p = pi |  Case for p = 0
         a1 = 0 # we set a to 0
         a2 = 0 #
         y1 = acos(A).evalf()
@@ -653,7 +653,7 @@ class Kinematic6axisModel:
       sp2 = sin(p2).evalf()
       y34 = []
       a34 = []
-      if sp2 <= 1e-5: # for p = 0 or p = pi |  Case for p = pi
+      if abs(sp2) <= 1e-5: # for p = 0 or p = pi |  Case for p = pi
         a3 = 0 # we set a to 0
         a4 = 0 #
         y3 = asin(D).evalf()
