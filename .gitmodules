@@ -7,3 +7,6 @@
 [submodule "src/sdrac_mechanical"]
 	path = src/sdrac_mechanical
 	url = git@github.com:X-Lemon-X/sdrac_mechanical.git
+[submodule "src/Pilot_6_axis"]
+	path = src/Pilot_6_axis
+	url = git@github.com:X-Lemon-X/Pilot_6_axis.git

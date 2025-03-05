@@ -14,14 +14,14 @@ def generate_launch_description():
         Node(
             package='controler',
             namespace='sdrac',
-            executable='controler_translator',
-            name='controler_translator',
+            executable='controler_xyz',
+            name='controler_xyz'
         ),
         Node(
             package='controler',
             namespace='sdrac',
-            executable='controler_rc',
-            name='controler_rc'
+            executable='controler_simulation',
+            name='controler_simulation'
         ),
         # Node(
         #     package='pilot_6axis',
@@ -33,6 +33,9 @@ def generate_launch_description():
         #     package='sdrac_can_stranslator',
         #     namespace='sdrac',
         #     executable='can_code',
-        #     name='can_code'
+        #     name='can_code',
+        #     parameters=[
+        #         {"can_db_file": can_dbc_file}
+        #     ]
         # ),
     ])

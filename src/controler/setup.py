@@ -23,6 +23,7 @@ setup(
             'controler_xyz = controler.controler_xyz:main',
             'controler_translator = controler.controler_translator:main',
             'controler_rc = controler.controler_dumy_rc:main',
+            'controler_simulation = controler.controler_simulation:main',
         ],
     },
 )

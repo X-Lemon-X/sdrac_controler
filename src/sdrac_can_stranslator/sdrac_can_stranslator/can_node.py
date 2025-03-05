@@ -38,11 +38,11 @@ class CanPublisher(Node):
     )
 
     self.declare_parameter('can_db_file', resolve_relative_path('ariadna_constants/can_messages/output/can.dbc'))
+    self.can_db_file = self.get_parameter('can_db_file').get_parameter_value().string_value
+    self.get_logger().info(f"can_db_file: {self.can_db_file}")
     self.declare_parameter('can_interface_name', 'can0')
     self.declare_parameter('can_bitrate', 100000)
     self.declare_parameter('can_time_out', 0.006)
-    self.can_db_file = self.get_parameter('can_db_file').get_parameter_value().string_value
-    self.get_logger().info(f"can_db_file: {self.can_db_file}")
     self.can_interface_name = self.get_parameter('can_interface_name').get_parameter_value().string_value
     self.can_bitrate = self.get_parameter('can_bitrate').get_parameter_value().integer_value
     self.can_time_out = self.get_parameter('can_time_out').get_parameter_value().double_value
@@ -105,6 +105,17 @@ class CanPublisher(Node):
         if not self.robot_disconnect:
           self.get_logger().error("CAN disconnected")
         self.robot_disconnect = True
+    if self.robot_disconnect:
+      ros_msg = DiagnosticArray()
+      ros_msg.header.stamp = self.get_clock().now().to_msg()
+      ros_msg.header.frame_id = 'konarm_connection'
+      status = DiagnosticStatus()
+      status.name = f'konarm_connection'
+      status.message = 'connected'
+      status.level = DiagnosticStatus.ERROR
+      ros_msg.status.append(status)
+      self.publisher_status.publish(ros_msg)
+
 
   def start_can(self):
     if not os.path.exists(self.can_db_file):
@@ -278,6 +289,17 @@ class CanPublisher(Node):
       ros_msg.status.append(status)
       id += 1
     self.publisher_errors.publish(ros_msg)
+    
+    ros_msg = DiagnosticArray()
+    ros_msg.header.stamp = self.get_clock().now().to_msg()
+    ros_msg.header.frame_id = 'konarm_connection'
+
+    status = DiagnosticStatus()
+    status.name = f'konarm_connection'
+    status.message = 'connected'
+    status.level = DiagnosticStatus.OK
+    ros_msg.status.append(status)
+    self.publisher_status.publish(ros_msg)
 
   def joint_set_callback(self, msg:JointState):
     if len(msg.position) != self.konarm_axes:

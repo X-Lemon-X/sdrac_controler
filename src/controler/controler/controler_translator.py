@@ -40,12 +40,12 @@ class ControlerTranslatorNode(Node):
     # This function is used to translate the velocity of the robot to the velocity of the joints
     # 3 jouitn forming differential drive
     out_5 = (roll_5 + roll_6)/2
-    out_6 = (roll_5 - roll_6)/2
+    out_6 = (roll_6 - roll_5)/2
     # corection fot the 4th joint
     out_4 = roll_4
     # one of this wil most likelky be + and the other - but that depend from the setup of the robot 
-    out_5 = out_5 - out_4
-    out_6 = out_6 - out_4
+    out_5 = out_5 + out_4
+    out_6 = out_6 + out_4
     return out_4, out_5, out_6
 
   def tranlate_from_diff_drive_to(self, in_4, in_5, in_6):
@@ -53,10 +53,10 @@ class ControlerTranslatorNode(Node):
     #  this function is used to translate the velocity of the joints to the velocity of the robot 
     rot_4 = in_4
     # corection fot the 4th joint that rotates the 5th and 6th joint
-    in_5 = in_5 - rot_4
-    in_6 = in_6 - rot_4
+    in_5 = in_5 + rot_4
+    in_6 = in_6 + rot_4
     # inverse of differential drive
-    rot_5 = (in_5 - in_6)/2 
+    rot_5 = (in_6 - in_5 )/2 
     rot_6 = (in_5 + in_6)/2
     return rot_4, rot_5, rot_6
   
@@ -65,30 +65,49 @@ class ControlerTranslatorNode(Node):
     # The message is then translated to the corresponding joints and send to /controls/sdrac/joint_seters
     # The message is also send to /controls/sdrac/joint_states
     # self.get_logger().info(f"joint_control_callback: \"{msg}\"")
+    joint_1_position = msg.position[0]
+    joint_2_position = msg.position[1]
+    joint_3_position = msg.position[2]
     joint_4_position = msg.position[3]
     joint_5_position = msg.position[4]
     joint_6_position = msg.position[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_p, j5_p, j6_p = self.translate_to_diff_drive(joint_4_position, joint_5_position, joint_6_position)
+    joint_4_position, joint_5_position, joint_6_position = self.translate_to_diff_drive(joint_4_position, joint_5_position, joint_6_position)
 
     # map velocity to position
+    joint_1_velocity = msg.velocity[0]  
+    joint_2_velocity = msg.velocity[1]
+    joint_3_velocity = msg.velocity[2]
     joint_4_velocity = msg.velocity[3]
     joint_5_velocity = msg.velocity[4]
     joint_6_velocity = msg.velocity[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_v, j5_v, j6_v = self.translate_to_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
+    # joint_4_velocity, joint_5_velocity, joint_6_velocity = self.translate_to_diff_drive(joint_4_velocity, joint_5_velocity, joint_6_velocity)
     reponse = JointState()
     reponse.header.stamp = self.get_clock().now().to_msg()
-    reponse.position = msg.position
-    reponse.velocity = msg.velocity
+    positions = [
+      joint_1_position,
+      joint_2_position,
+      joint_3_position,
+      joint_4_position,
+      joint_5_position,
+      joint_6_position
+    ]
+
+    velocity = [
+      joint_1_velocity,
+      joint_2_velocity,
+      joint_3_velocity,
+      joint_4_velocity,
+      joint_5_velocity,
+      joint_6_velocity
+    ]
+
+    reponse.position = positions
+    reponse.velocity = velocity
     reponse.effort = msg.effort
     reponse.name = msg.name
-    reponse.position[3] = j4_p
-    reponse.position[4] = j5_p
-    reponse.position[5] = j6_p
-    reponse.velocity[3] = j4_v
-    reponse.velocity[4] = j5_v
-    reponse.velocity[5] = j6_v
+    self.get_logger().info(f"joint_control_callback: \"{reponse}\"")
     self.publisher_joints_seters.publish(reponse)
 
   def joint_geters_callback(self, msg: JointState):

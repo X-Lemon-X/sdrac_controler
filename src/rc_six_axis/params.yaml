@@ -1,3 +1,0 @@
-rc_six_axis:
-  ros__parameters:
-    pilot_six_axis_joy_topic: /controls/sdrac/joy

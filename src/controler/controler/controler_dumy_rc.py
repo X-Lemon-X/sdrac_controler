@@ -23,12 +23,12 @@ class ControlerDumyRC(Node):
 
     self.sub_joint_states = self.create_subscription(
       Joy,
-      '/sdrac/joy',
+      '/joy',
       self.joy_callback,
       10
     )
     self.buttons_previous = [0,0,0,0,0,0,0,0]
-
+    self.mode_pos = True
     self.publisher_control_mode_callback = self.create_publisher(String,'/controls/sdrac/control_mode',10)
 
   def joint_states_callback(self, msg: JointState):
@@ -47,17 +47,20 @@ class ControlerDumyRC(Node):
     if self.check_if_button_pressed(buttons, 2):
       msg = String()
       msg.data = "velocity_control"
+      self.mode_pos = False
       self.publisher_control_mode_callback.publish(msg)
       self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
     
     if self.check_if_button_pressed(buttons, 3):
       msg = String()
       msg.data = "position_control"
+      self.mode_pos = True
       self.publisher_control_mode_callback.publish(msg)
       self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
     
     if self.check_if_button_pressed(buttons, 4):
       msg = String()
+      self.mode_pos = False
       msg.data = "torque_control"
       self.publisher_control_mode_callback.publish(msg)
       self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
@@ -72,12 +75,27 @@ class ControlerDumyRC(Node):
     msg_joint = JointState()
     msg_joint.header.frame_id = "joint_control"
     msg_joint.header.stamp = self.get_clock().now().to_msg()
-    velocity = []
-    for axis in msg.axes:
-      velocity.append(axis)
+
+
+    if self.mode_pos:
+      velocity = [0.5] * 6
+      positons = [0.0] * 6
+      # for axis in msg.axes:
+      #   positons.append(axis)
+      positons[0] = msg.axes[0]
+      positons[1] = msg.axes[1]
+      positons[2] = msg.axes[2]
+      positons[3] = msg.axes[3]
+      positons[4] = msg.axes[4]
+      positons[5] = msg.axes[5]
+    else:
+      velocity = []
+      positons = [0.0] * 6
+      for axis in msg.axes:
+        velocity.append(axis)
+    
     msg_joint.velocity = velocity 
-    msg_joint.effort = []
-    positons = [ 0.0 for _ in range(6)]
+    msg_joint.effort = velocity
     msg_joint.position = positons
     # self.get_logger().info(f"joy message: \"{msg_joint}\"")
     self.buttons_handler(msg.buttons)
