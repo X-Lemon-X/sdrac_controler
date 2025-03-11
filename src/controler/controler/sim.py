@@ -487,33 +487,6 @@ class Kinematic6axisModel:
     else:
       return sympy.re(angle)
 
-  # def __angle_between_vectors(self,q,vector1, vector2):
-  #   # vector1 = sympy.Matrix([axis_x-x, axis_y-y,0])
-  #   # vector2 = sympy.Matrix([x, y-model.link_legnth_1,0])
-  #   dot_product = vector1.dot(vector2)
-  #   magnitude1 = vector1.norm()
-  #   magnitude2 = vector2.norm()
-  #   cos_theta = dot_product / (magnitude1 * magnitude2)
-  #   theta = sympy.acos(cos_theta)
-    
-  #   if vector2[0] == 0 and vector2[1] >= 0:
-  #     return theta
-  #   elif vector2[0] == 0 and vector2[1] < 0:
-  #     return np.pi - theta
-  #   a = (vector2[1])/(vector2[0])
-  #   y_res = a*(vector1[0]) 
-  #   y_res2 = -a*(vector1[0])
-  #   angle = theta
-  #   if vector1[1] <= y_res  and vector1[1] >= y_res2 or a >= 1e+7: # first quarter
-  #     angle = theta
-  #   elif vector1[1] < y_res  and vector1[1] < y_res2: # second quarter
-  #     angle = np.pi - theta
-  #   elif vector1[1] > y_res  and vector1[1] < y_res2: # third quarter
-  #     angle = np.pi + theta
-  #   elif vector1[1] > y_res  and vector1[1] > y_res2: # fourth quarter
-  #     angle = 2*np.pi - theta
-  #   return angle
-
   def get_q1q2q3_angles_for_pos(self):
     x = self.pos_x
     y = self.pos_y

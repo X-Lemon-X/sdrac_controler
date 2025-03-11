@@ -17,18 +17,18 @@ def generate_launch_description():
             executable='controler_xyz',
             name='controler_xyz'
         ),
-        Node(
-            package='controler',
-            namespace='sdrac',
-            executable='controler_simulation',
-            name='controler_simulation'
-        ),
-        Node(
-            package='pilot_6axis',
-            namespace='sdrac',
-            executable='rc_node',
-            name='rc_node'
-        ),
+        # Node(
+        #     package='controler',
+        #     namespace='sdrac',
+        #     executable='controler_simulation',
+        #     name='controler_simulation'
+        # ),
+        # Node(
+        #     package='pilot_6axis',
+        #     namespace='sdrac',
+        #     executable='rc_node',
+        #     name='rc_node'
+        # ),
         # Node(
         #     package='sdrac_can_stranslator',
         #     namespace='sdrac',

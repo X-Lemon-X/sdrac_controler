@@ -8,7 +8,8 @@ from  std_msgs.msg import String
 from diagnostic_msgs.msg import KeyValue, DiagnosticStatus, DiagnosticArray
 import os
 import numpy
-from .sim import Kinematic6axisModel
+from sim import Kinematic6axisModel
+import sys
 
 class ControlerXYZ(Node):
   def __init__(self):
@@ -98,6 +99,8 @@ class ControlerXYZ(Node):
     return rot_4, rot_5, rot_6
 
   def translate_angles_from_robot_to_model(self, angles):
+    angles = numpy.mod(angles, 2*numpy.pi)
+
     q1 = -angles[0]
     q2 = -angles[1] - numpy.pi/2
     q3 = -angles[2] + numpy.pi/2
@@ -237,7 +240,7 @@ class ControlerXYZ(Node):
         Target X: {self.pos_x_target}, Y: {self.pos_y_target}, Z: {self.pos_z_target}, Roll: {self.rot_roll_target}, Pitch: {self.rot_pitch_target}, Yaw: {self.rot_yaw_target}
         Target rot: q1: {round(q1,3)}, q2: {round(q2,3)}, q3: {round(q3,3)}, q4: {round(q4,3)}, q5: {round(q5,3)}, q6: {round(q6,3)}
         Target Inv rot: q1: {sq1}, q2: {sq2}, q3: {sq3}, q4: {sq4}, q5: {sq5}, q6: {sq6}
-        Inverse kinematic solutions: { "NO SOLUTIONS" if len(solutions) == 0 else ""}
+        Inverse kinematic solutions: { "NO SOLUTIONS" if len(solutions) == 0 else len(solutions)}
       """)
     
 
