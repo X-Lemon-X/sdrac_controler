@@ -141,7 +141,7 @@ class ControlerXYZ(Node):
         distance_min = dist
         retun_value = s
       i += 1
-      self.get_logger().info(f"Solution {i}/{len(solutions)}: {s}")
+      # self.get_logger().info(f"Solution distance:{dist} {i}/{len(solutions)}: {s}")
     return retun_value
 
   def pick_shortest_path(self, angle_target, angle_current):
@@ -178,7 +178,7 @@ class ControlerXYZ(Node):
     roll, pitch, yaw = sol[0]
 
     if not self.first_pos_callculated:
-      # ro,pi,ya = self.pick_closest_value([0,0,0],sol)
+      roll, pitch, yaw = self.pick_closest_value([0,0,0],sol)
 
       self.get_logger().info("First position callculated")
       self.pos_x_target = x
@@ -190,7 +190,7 @@ class ControlerXYZ(Node):
       self.rot_yaw_target = yaw
       self.first_pos_callculated = True
 
-    # roll,pitch,yaw = self.pick_closest_value((self.rot_roll_target, self.rot_pitch_target, self.rot_yaw_target), sol)
+    roll,pitch,yaw = self.pick_closest_value((self.rot_roll_target, self.rot_pitch_target, self.rot_yaw_target), sol)
     # self.rot_roll_target = roll
     # self.rot_pitch_target = pitch
     # self.rot_yaw_current = yaw
@@ -216,13 +216,16 @@ class ControlerXYZ(Node):
     self.model_inverse.set_pos_and_rot(self.pos_x_target, self.pos_y_target, self.pos_z_target, self.rot_roll_target, self.rot_pitch_target, self.rot_yaw_target)
     solutions = self.model_inverse.get_inverse_kinematics_solutions()
     if len(solutions) != 0:
+      s = self.pick_closest_value([q1, q2, q3, q4, q5, q6], solutions)
+      for a in solutions:
+        self.get_logger().info(f"Solution: {a}")
       # sols = len(solutions)
       # if len(solutions) != 1:
       #   sols = (sols // 2)
       # else:
       #   sols = 0
-      sols = 0
-      q1, q2, q3, q4, q5, q6 = solutions[sols]  
+      # sols = 0
+      q1, q2, q3, q4, q5, q6 = s  
 
     q1, q2, q3, q4, q5, q6 = self.translate_angles_from_model_to_robot(q1, q2, q3, q4, q5, q6)
     sq1 = round(q1,3)
@@ -231,7 +234,7 @@ class ControlerXYZ(Node):
     sq4 = round(q4,3)
     sq5 = round(q5,3)
     sq6 = round(q6,3)
-    q1, q2, q3, q4, q5, q6 = self.optimize_rotations(q1, q2, q3, q4, q5, q6)
+    # q1, q2, q3, q4, q5, q6 = self.optimize_rotations(q1, q2, q3, q4, q5, q6)
 
     self.get_logger().info(
       f"""
@@ -255,7 +258,7 @@ class ControlerXYZ(Node):
     msg_joint.header.frame_id = "joint_control"
     msg_joint.header.stamp = self.get_clock().now().to_msg()
 
-    q4, q5, q6 = self.translate_to_diff_drive(q4, q5, q6)
+    # q4, q5, q6 = self.translate_to_diff_drive(q4, q5, q6)
     positions = [ q1, q2, q3, q4, q5, q6]
     velocities = [velocity, velocity, velocity, velocity, velocity, velocity]
     efforts = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -279,14 +282,20 @@ class ControlerXYZ(Node):
     joint_5_position = msg.position[4]
     joint_6_position = msg.position[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_p, j5_p, j6_p = self.tranlate_from_diff_drive_to(joint_4_position, joint_5_position, joint_6_position)
+    # j4_p, j5_p, j6_p = self.tranlate_from_diff_drive_to(joint_4_position, joint_5_position, joint_6_position)
+    j4_p = joint_4_position
+    j5_p = -joint_5_position
+    j6_p = joint_6_position
 
     # map velocity to position
     joint_4_velocity = msg.velocity[3]
     joint_5_velocity = msg.velocity[4]
     joint_6_velocity = msg.velocity[5]
     # Translate the velocity of the robot to the velocity of the joints
-    j4_v, j5_v, j6_v = self.tranlate_from_diff_drive_to(joint_4_velocity, joint_5_velocity, joint_6_velocity)
+    # j4_v, j5_v, j6_v = self.tranlate_from_diff_drive_to(joint_4_velocity, joint_5_velocity, joint_6_velocity)
+    j4_v = joint_4_velocity
+    j5_v = -joint_5_velocity
+    j6_v = joint_6_velocity
     names = [
       "Rev1",
       "Rev2",
