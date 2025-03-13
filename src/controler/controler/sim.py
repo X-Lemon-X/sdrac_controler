@@ -543,13 +543,15 @@ class Kinematic6axisModel:
       }).evalf()
     eu = a1 @ a2 @ a3
     eu = eu[:3,:3]
-    if eqMatrix(eu, target_rot):
+    if eqMatrix(eu, target_rot,0.001):
       return (a,b,c)
     return None
   
   def get_inverse_kinematics_solutions(self):
     zyz = KinamticsMatrices.EulerZYZToMatrix(self.rot_roll,self.rot_pitch,self.rot_yaw).evalf()
     solutions = self.get_q1q2q3_angles_for_pos()
+    if len(solutions) == 1:
+      pass
     angles = []
     for s in solutions:
       # we will ingore translation on 4 axis and only take translation on z axis
@@ -608,17 +610,17 @@ class Kinematic6axisModel:
         g_11 = sp1*cos(y1).evalf()
         g_12 = sp1*cos(y2).evalf()
 
-        if eq(g_11, G):
+        if eq(g_11, G,0.001):
           y12.append(y1)
-        if eq(g_12, G):
+        if eq(g_12, G,0.001):
           y12.append(y2)
 
         # check a1 a2
         c_11 = -sp1*cos(a1).evalf()
         c_12 = -sp1*cos(a2).evalf()
-        if eq(c_11, C):
+        if eq(c_11, C,0.001):
           a12.append(a1)
-        if eq(c_12, C):
+        if eq(c_12, C,0.001):
           a12.append(a2)
 
       #  second solution for P angle
@@ -634,10 +636,10 @@ class Kinematic6axisModel:
         # check y3 y4
         d_21 = cos(y3).evalf()
         d_22 = cos(y4).evalf()
-        if eq(d_21, E):
-          y34.append(y3)
+        if eq(d_21, E,0.001):
+          y34.append(y3,)
           a34.append(a3)
-        if eq(d_22, E):
+        if eq(d_22, E,0.001):
           y34.append(y4)
           a34.append(a4)
 
@@ -650,18 +652,18 @@ class Kinematic6axisModel:
         # check y3 y4
         g_23 = sp2*cos(y3).evalf()
         g_24 = sp2*cos(y4).evalf()
-        if eq(g_23, G):
+        if eq(g_23, G,0.001):
           y34.append(y3)
-        if eq(g_24, G):
+        if eq(g_24, G,0.001):
           y34.append(y4)
 
         # check a3 a4
         c_23 = -sp2*cos(a3).evalf()
         c_24 = -sp2*cos(a4).evalf()
         a34 = []
-        if eq(c_23, C):
+        if eq(c_23, C,0.001):
           a34.append(a3)
-        if eq(c_24, C):
+        if eq(c_24, C,0.001):
           a34.append(a4)
       
       solut = []
@@ -678,6 +680,6 @@ class Kinematic6axisModel:
             solut.append(sol)
 
       for sa in solut:
-        angles.append( (s[0],s[1],s[2], sa[0], sa[1],sa[2]) )
+        angles.append( (sympy.re(s[0]),sympy.re(s[1]),sympy.re(s[2]), sympy.re(sa[0]), sympy.re(sa[1]),sympy.re(sa[2])) )
     
     return angles

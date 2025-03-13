@@ -122,6 +122,12 @@ class ControlerXYZ(Node):
     # q4 no correction
     # q5 no correction 
     # q6 no correction
+    q1 = numpy.mod(q1, 2*numpy.pi)
+    q2 = numpy.mod(q2, 2*numpy.pi)
+    q3 = numpy.mod(q3, 2*numpy.pi)
+    q4 = numpy.mod(q4, 2*numpy.pi)
+    q5 = numpy.mod(q5, 2*numpy.pi)
+    q6 = numpy.mod(q6, 2*numpy.pi)
     return q1, q2, q3, q4, q5, q6
 
   def set_control_mode(self):
@@ -142,7 +148,7 @@ class ControlerXYZ(Node):
         retun_value = s
       i += 1
       # self.get_logger().info(f"Solution distance:{dist} {i}/{len(solutions)}: {s}")
-    return retun_value
+    return retun_value, i
 
   def pick_shortest_path(self, angle_target, angle_current):
     dist = abs(angle_target - angle_current)
@@ -167,7 +173,16 @@ class ControlerXYZ(Node):
     if len(msg.axes) != 6:
       self.get_logger().error(f"joy message not enought axis: \"{len(msg.axes)}\" expected 6")
       return
+
     q1, q2, q3, q4, q5, q6 = self.translate_angles_from_robot_to_model([self.q1, self.q2, self.q3, self.q4, self.q5, self.q6])
+    qs1, qs2,qs3,qs4,qs5,qs6 = self.translate_angles_from_model_to_robot(q1, q2, q3, q4, q5, q6)
+    qa1, qa2, qa3, qa4, qa5, qa6 = self.translate_angles_from_robot_to_model([qs1, qs2, qs3, qs4, qs5, qs6])
+    self.get_logger().info(f"""
+                           Model angles: q1: {self.q1}, q2: {self.q2}, q3: {self.q3}, q4: {self.q4}, q5: {self.q5}, q6: {self.q6}
+                           Robot angles:q1: {q1},  q2: {q2},  q3:{q3}, q4: {q4}, q5: {q5}, q6: {q6}
+                          Model angles: q1: {qs1}, q2: {qs2}, q3:{qs3}, q4: {qs4}, q5: {qs5}, q6: {qs6}
+                                   RA : q1: {qa1}, q2:{qa2},  q3:{qa3}, q4:{qa4},  q5:{qa5},  q6:{qa6}""")
+
 
     time_diff = ( self.get_clock().now().nanoseconds - self.time_prev)/1e9
     self.time_prev = self.get_clock().now().nanoseconds
@@ -178,8 +193,8 @@ class ControlerXYZ(Node):
     roll, pitch, yaw = sol[0]
 
     if not self.first_pos_callculated:
-      roll, pitch, yaw = self.pick_closest_value([0,0,0],sol)
-
+      s, index = self.pick_closest_value([0,0,0],sol)
+      roll, pitch, yaw = s
       self.get_logger().info("First position callculated")
       self.pos_x_target = x
       self.pos_y_target = y
@@ -190,7 +205,8 @@ class ControlerXYZ(Node):
       self.rot_yaw_target = yaw
       self.first_pos_callculated = True
 
-    roll,pitch,yaw = self.pick_closest_value((self.rot_roll_target, self.rot_pitch_target, self.rot_yaw_target), sol)
+    # roll,pitch,yaw = self.pick_closest_value((self.rot_roll_target, self.rot_pitch_target, self.rot_yaw_target), sol)
+    roll, pitch, yaw = sol[0]
     # self.rot_roll_target = roll
     # self.rot_pitch_target = pitch
     # self.rot_yaw_current = yaw
@@ -215,10 +231,12 @@ class ControlerXYZ(Node):
     # Calculate the inverse kinematic model
     self.model_inverse.set_pos_and_rot(self.pos_x_target, self.pos_y_target, self.pos_z_target, self.rot_roll_target, self.rot_pitch_target, self.rot_yaw_target)
     solutions = self.model_inverse.get_inverse_kinematics_solutions()
-    if len(solutions) != 0:
-      s = self.pick_closest_value([q1, q2, q3, q4, q5, q6], solutions)
+    if len(solutions) != 0 and len(solutions) != 2:
+      upper_solutions = solutions[len(solutions)//2:]
+      s , index= self.pick_closest_value([q1, q2, q3, q4, q5, q6], upper_solutions)
       for a in solutions:
         self.get_logger().info(f"Solution: {a}")
+      self.get_logger().info(f"Index: {index}")
       # sols = len(solutions)
       # if len(solutions) != 1:
       #   sols = (sols // 2)
@@ -243,7 +261,7 @@ class ControlerXYZ(Node):
         Target X: {self.pos_x_target}, Y: {self.pos_y_target}, Z: {self.pos_z_target}, Roll: {self.rot_roll_target}, Pitch: {self.rot_pitch_target}, Yaw: {self.rot_yaw_target}
         Target rot: q1: {round(q1,3)}, q2: {round(q2,3)}, q3: {round(q3,3)}, q4: {round(q4,3)}, q5: {round(q5,3)}, q6: {round(q6,3)}
         Target Inv rot: q1: {sq1}, q2: {sq2}, q3: {sq3}, q4: {sq4}, q5: {sq5}, q6: {sq6}
-        Inverse kinematic solutions: { "NO SOLUTIONS" if len(solutions) == 0 else len(solutions)}
+        Inverse kinematic solutions: {len(solutions)} { "NO SOLUTIONS" if len(solutions) == 0 else "" }
       """)
     
 
