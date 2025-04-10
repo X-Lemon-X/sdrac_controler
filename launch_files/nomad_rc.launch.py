@@ -21,15 +21,18 @@ def generate_launch_description():
             ]
         ),
         Node(
-            package='controler',
+            package='pilot_6axis',
             namespace='sdrac',
-            executable='controler_rc',
-            name='controler_rc'
+            executable='rc_node',
+            name='rc_node'
         ),
         Node(
             package='sdrac_can_stranslator',
             namespace='sdrac',
             executable='can_code',
-            name='can_code'
+            name='can_code',
+            parameters=[
+              {"can_db_file": can_dbc_file}
+            ]
         ),
     ])

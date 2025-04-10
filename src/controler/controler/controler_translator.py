@@ -107,7 +107,7 @@ class ControlerTranslatorNode(Node):
     reponse.velocity = velocity
     reponse.effort = msg.effort
     reponse.name = msg.name
-    self.get_logger().info(f"joint_control_callback: \"{reponse}\"")
+    # self.get_logger().info(f"joint_control_callback: \"{reponse}\"")
     self.publisher_joints_seters.publish(reponse)
 
   def joint_geters_callback(self, msg: JointState):
@@ -147,6 +147,8 @@ class ControlerTranslatorNode(Node):
     reponse.velocity[4] = j5_v
     reponse.velocity[5] = j6_v
     self.publisher_joints_states.publish(reponse)
+    # self.get_logger().info(f"joint_control_callback: \"{reponse}\"")
+
 
     # Publish the message to the GUI
     reponse = JointState()

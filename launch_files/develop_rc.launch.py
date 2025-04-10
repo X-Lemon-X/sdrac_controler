@@ -23,16 +23,16 @@ def generate_launch_description():
             executable='controler_rc',
             name='controler_rc'
         ),
-        # Node(
-        #     package='pilot_6axis',
-        #     namespace='sdrac',
-        #     executable='rc_node',
-        #     name='rc_node'
-        # ),
-        # Node(
-        #     package='sdrac_can_stranslator',
-        #     namespace='sdrac',
-        #     executable='can_code',
-        #     name='can_code'
-        # ),
+        Node(
+            package='pilot_6axis',
+            namespace='sdrac',
+            executable='rc_node',
+            name='rc_node'
+        ),
+        Node(
+            package='sdrac_can_stranslator',
+            namespace='sdrac',
+            executable='can_code',
+            name='can_code'
+        )
     ])
