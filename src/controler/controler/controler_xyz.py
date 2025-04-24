@@ -8,7 +8,7 @@ from  std_msgs.msg import String
 from diagnostic_msgs.msg import KeyValue, DiagnosticStatus, DiagnosticArray
 import os
 import numpy
-from sim import Kinematic6axisModel
+from .sim import Kinematic6axisModel
 import sys
 
 class ControlerXYZ(Node):
@@ -110,7 +110,7 @@ class ControlerXYZ(Node):
     # q4 no correction
     # q5 no correction 
     # q6 no correction
-    return q1, q2, q3, q4, q5, q6
+    return float(q1), float(q2), float(q3), float(q4), float(q5), float(q6)
 
   def translate_angles_from_model_to_robot(self, q1, q2, q3, q4, q5, q6):
     q1 = 2* numpy.pi -q1
@@ -344,7 +344,12 @@ class ControlerXYZ(Node):
 
     # calcualte kinematic model
     q1, q2, q3, q4, q5, q6 = self.translate_angles_from_robot_to_model(reponse.position)
-
+    q1 = float(q1)
+    q2 = float(q2)
+    q3 = float(q3)
+    q4 = float(q4)
+    q5 = float(q5)
+    q6 = float(q6)
     self.model_pos.set_angles(q1, q2, q3, q4, q5, q6)
     # x,y,z = self.model_pos.get_cordinates()
     # roll, pitch, yaw = self.model_pos.get_euler_zyz_angles_solutions()
