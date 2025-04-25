@@ -10,6 +10,12 @@ import os
 import numpy
 from .sim import Kinematic6axisModel
 import sys
+from enum import Enum
+
+class ControlMode(Enum):
+  POSITION = 1
+  VELOCITY = 2
+  TARQUE = 3
 
 class ControlerXYZ(Node):
   def __init__(self):
@@ -73,6 +79,8 @@ class ControlerXYZ(Node):
       10
     )
     self.write_control_mode = self.create_timer(20, self.set_control_mode)
+    self.control_mode = ControlMode.VELOCITY
+    self.buttons_previous = [0,0,0,0,0,0,0,0]
 
   def translate_to_diff_drive(self, roll_4, roll_5, roll_6):
     # This function is used to translate the velocity of the robot to the velocity of the joints
@@ -130,7 +138,7 @@ class ControlerXYZ(Node):
     q6 = numpy.mod(q6, 2*numpy.pi)
     return q1, q2, q3, q4, q5, q6
 
-  def set_control_mode(self):
+  def set_control_mode(self,mode):
     msg_conmtrol_mode = String()
     msg_conmtrol_mode.data = "position_control"
     self.publisher_control_mode_callback.publish(msg_conmtrol_mode)
@@ -169,11 +177,43 @@ class ControlerXYZ(Node):
     q6 = self.pick_shortest_path(q6, cq6)
     return q1, q2, q3, q4, q5, q6
 
-  def joy_callback(self, msg: Joy):
-    if len(msg.axes) != 6:
-      self.get_logger().error(f"joy message not enought axis: \"{len(msg.axes)}\" expected 6")
-      return
+  def check_if_button_pressed(self, buttons, index):
+    pressed = False
+    if buttons[index] != self.buttons_previous[index] and buttons[index] == 1:
+      pressed = True
 
+    self.buttons_previous[index] = buttons[index]
+    return pressed
+
+  def buttons_handler(self, buttons):
+    msg = None
+    if self.check_if_button_pressed(buttons, 2):
+      msg = String()
+      msg.data = "velocity_control"
+      self.mode_pos = False
+      self.publisher_control_mode_callback.publish(msg)
+      self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
+      self.control_mode = ControlMode.VELOCITY
+    
+    if self.check_if_button_pressed(buttons, 3):
+      msg = String()
+      msg.data = "position_control"
+      self.mode_pos = True
+      self.publisher_control_mode_callback.publish(msg)
+      self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
+      self.control_mode = ControlMode.POSITION
+    
+    if self.check_if_button_pressed(buttons, 4):
+      msg = String()
+      self.mode_pos = False
+      msg.data = "torque_control"
+      self.publisher_control_mode_callback.publish(msg)
+      self.get_logger().info(f"Change control mode to: \"{msg.data}\"")
+      self.control_mode = ControlMode.TARQUE
+
+    self.buttons_previous = buttons
+
+  def xyz_control(self,msg: Joy):
     q1, q2, q3, q4, q5, q6 = self.translate_angles_from_robot_to_model([self.q1, self.q2, self.q3, self.q4, self.q5, self.q6])
     qs1, qs2,qs3,qs4,qs5,qs6 = self.translate_angles_from_model_to_robot(q1, q2, q3, q4, q5, q6)
     qa1, qa2, qa3, qa4, qa5, qa6 = self.translate_angles_from_robot_to_model([qs1, qs2, qs3, qs4, qs5, qs6])
@@ -284,6 +324,40 @@ class ControlerXYZ(Node):
     msg_joint.velocity = velocities
     msg_joint.effort = efforts
     self.publisher_joints_seters.publish(msg_joint)
+
+  def velocity_control(self,msg: Joy):
+    msg_joint = JointState()
+    msg_joint.header.frame_id = "joint_control"
+    msg_joint.header.stamp = self.get_clock().now().to_msg()
+    velocity = []
+    positons = [0.0] * 6
+    for axis in msg.axes:
+      velocity.append(axis)
+    
+    msg_joint.velocity = velocity 
+    msg_joint.effort = velocity
+    msg_joint.position = positons
+    # self.get_logger().info(f"joy message: \"{msg_joint}\"")
+    self.publisher_joints_seters.publish(msg_joint)
+
+  def joy_callback(self, msg: Joy):
+    if len(msg.axes) != 6:
+      self.get_logger().error(f"joy message not enought axis: \"{len(msg.axes)}\" expected 6")
+      return
+
+    self.buttons_handler(msg.buttons)
+
+    if self.control_mode == ControlMode.POSITION:
+      self.xyz_control(msg)
+      return
+    
+    if self.control_mode == ControlMode.VELOCITY:
+      self.velocity_control(msg)
+      return
+
+    if self.control_mode == ControlMode.TARQUE:
+      self.get_logger().warning("Torque control not implemented")
+      return
 
 
   def status_callback(self, msg: DiagnosticArray):

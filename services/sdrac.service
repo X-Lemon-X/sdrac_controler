@@ -1,0 +1,14 @@
+# filepath: /etc/systemd/system/sdrac.service
+[Unit]
+Description=Sdrac Software Startup Script
+After=can_init.service
+Requires=can_init.service
+
+[Service]
+Type=simple
+User=orangepi
+ExecStart=/home/sdrac/sdrac_controler/start_nomad.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

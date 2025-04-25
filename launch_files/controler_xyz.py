@@ -20,14 +20,17 @@ def generate_launch_description():
               {"increase_value_pos": 50.0},
               {"increase_value_rot": 0.5},
               {"default_velocity": 0.1},
+            ],
+            remappings=[
+              ("/joy", "/sdrac/joy")
             ]
         ),
-        Node(
-            package='pilot_6axis',
-            namespace='sdrac',
-            executable='rc_node',
-            name='rc_node'
-        ),
+        # Node(
+        #     package='pilot_6axis',
+        #     namespace='sdrac',
+        #     executable='rc_node',
+        #     name='rc_node'
+        # ),
         Node(
             package='sdrac_can_stranslator',
             namespace='sdrac',

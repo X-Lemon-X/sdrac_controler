@@ -27,7 +27,7 @@ class ControlerDumyRC(Node):
       self.joy_callback,
       10
     )
-    self.buttons_previous = [0,0,0,0,0,0,0,0]
+    self.buttons_previous = [0,0,0,0,0,0,0,0,0,0]
     self.mode_pos = True
     self.publisher_control_mode_callback = self.create_publisher(String,'/controls/sdrac/control_mode',10)
 
