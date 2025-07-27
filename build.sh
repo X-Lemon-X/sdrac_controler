@@ -8,7 +8,7 @@ src/sdrac_can_stranslator/sdrac_can_stranslator/ariadna_constants/./generate-fil
 
 # python3 -m pip install -r requirements.txt
 
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 
 colcon build --symlink-install
 source install/setup.bash

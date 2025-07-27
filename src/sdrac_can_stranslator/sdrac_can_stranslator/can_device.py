@@ -2,8 +2,6 @@ import os
 import subprocess
 import can
 import time
-import rclpy
-from rclpy.node import Node
 
 
 class CanHat:

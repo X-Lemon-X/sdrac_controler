@@ -6,8 +6,8 @@ Requires=can_init.service
 
 [Service]
 Type=simple
-User=orangepi
-ExecStart=/home/sdrac/sdrac_controler/start_nomad.sh
+User=ubuntu
+ExecStart=/home/ubuntu/it/sdrac_controler/services/start_dumy_rc.sh
 Restart=on-failure
 
 [Install]

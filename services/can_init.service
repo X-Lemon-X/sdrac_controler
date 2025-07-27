@@ -4,7 +4,7 @@ After=basic.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/sdrac/sdrac_controler/start_can.sh
+ExecStart=/home/ubuntu/it/sdrac_controler/services/start_can.sh
 RemainAfterExit=true
 User=root
 Restart=on-failure
