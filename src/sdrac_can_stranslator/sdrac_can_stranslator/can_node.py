@@ -37,7 +37,7 @@ class CanPublisher(Node):
       10
     )
 
-    self.declare_parameter('can_db_file', resolve_relative_path('ariadna_constants/can_messages/output/can.dbc'))
+    self.declare_parameter('can_db_file', resolve_relative_path('can_constants/can_messages/output/can.dbc'))
     self.can_db_file = self.get_parameter('can_db_file').get_parameter_value().string_value
     self.get_logger().info(f"can_db_file: {self.can_db_file}")
     self.declare_parameter('can_interface_name', 'can0')
