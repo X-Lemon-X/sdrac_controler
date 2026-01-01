@@ -10,3 +10,12 @@
 [submodule "src/sdrac_can_stranslator/sdrac_can_stranslator/can_constants"]
 	path = src/sdrac_can_stranslator/sdrac_can_stranslator/can_constants
 	url = git@github.com:KoNarRobotics/can_constants.git
+[submodule "src/ros_can_device"]
+	path = src/ros_can_device
+	url = git@github.com:X-Lemon-X/ros_can_device.git
+[submodule "src/ros_vesc_hardware"]
+	path = src/ros_vesc_hardware
+	url = git@github.com:X-Lemon-X/ros_vesc_hardware.git
+[submodule "src/ros_ari_shared_types"]
+	path = src/ros_ari_shared_types
+	url = git@github.com:X-Lemon-X/ros_ari_shared_types.git
