@@ -1,0 +1,7 @@
+konarm_driver:
+  frame_id:
+    {
+      type: string,
+      default_value: "konarm",
+      description: "KonArm's frame_id in which values are published.",
+    }
