@@ -3,7 +3,16 @@ build/
 devel/
 install/
 
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+!*.code-workspace
 
+# Built Visual Studio Code Extensions
+*.vsix
 
 # Logs
 log/
@@ -31,4 +40,3 @@ rosbag2*
 *.pyd
 __pycache__/
 .venv/
-

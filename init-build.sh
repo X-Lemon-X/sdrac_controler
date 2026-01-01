@@ -6,7 +6,8 @@ src/sdrac_can_stranslator/sdrac_can_stranslator/can_constants/./generate-files.s
 
 
 
-# python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
+pre-commit install
 
 source /opt/ros/jazzy/setup.bash
 
@@ -19,5 +20,3 @@ rosdep update
 colcon build --symlink-install
 source install/setup.bash
 source install/local_setup.bash
-
-
