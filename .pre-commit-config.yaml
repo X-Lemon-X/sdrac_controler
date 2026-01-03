@@ -11,3 +11,5 @@ repos:
     rev: v21.1.8
     hooks:
       - id: clang-format
+        args: [--verbose]
+        exclude: '\.(json)$'

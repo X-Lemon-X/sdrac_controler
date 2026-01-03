@@ -5,3 +5,21 @@ konarm_driver:
       default_value: "konarm",
       description: "KonArm's frame_id in which values are published.",
     }
+  can_interface:
+    {
+      type: string,
+      default_value: "can0",
+      description: "CAN interface to which KonArm is connected to.",
+    }
+  control_loop_hz:
+    {
+      type: double,
+      default_value: 75.0,
+      description: "Control loop frequency in Hz.",
+    }
+  error_get_hz:
+    {
+      type: double,
+      default_value: 2,
+      description: "Frequency in Hz at which error frames are requested from the KonArm.",
+    }

@@ -7,10 +7,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(generate_parameter_library REQUIRED)
-
 
 # Set required dependencies
 set(THIS_PACKAGE_INCLUDE_DEPENDS
@@ -20,6 +16,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   generate_parameter_library
   sensor_msgs
   ari_shared_types
+  can_device
 )
 
 set(CMAKE_CXX_STANDARD 20)
@@ -70,6 +67,13 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+install(TARGETS ${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY include/
+  DESTINATION include/${PROJECT_NAME}
+)
 
 
 # ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)

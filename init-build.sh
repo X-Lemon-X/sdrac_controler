@@ -8,6 +8,9 @@ src/sdrac_can_stranslator/sdrac_can_stranslator/can_constants/./generate-files.s
 
 python3 -m pip install -r requirements.txt
 pre-commit install
+pre-commit autoupdate
+pre-commit install
+
 
 source /opt/ros/jazzy/setup.bash
 
