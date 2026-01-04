@@ -90,7 +90,42 @@ Status KonArmDriver::on_activate() {
   RCLCPP_INFO(this->get_logger(), "Activating...");
 
   ARI_ASIGN_TO_OR_RETURN(can_driver_, CanDriver::Make(params_.can_interface, true, 100000, 128));
-  // ARI_RETURN_ON_ERROR(can_driver_->open_can());
+
+  static constexpr uint32_t base_konarm_id_mask  = 0xff0;
+  static constexpr uint32_t base_command_id_mask = 0x00f;
+  std::vector<uint32_t> can_ids                  = {
+    CAN_KONARM_1_STATUS_FRAME_ID & base_konarm_id_mask, CAN_KONARM_2_STATUS_FRAME_ID & base_konarm_id_mask,
+    CAN_KONARM_3_STATUS_FRAME_ID & base_konarm_id_mask, CAN_KONARM_4_STATUS_FRAME_ID & base_konarm_id_mask,
+    CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask, CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask
+  };
+
+  size_t j_index = 0;
+  for(const auto &id : can_ids) {
+    ARI_RETURN_ON_ERROR(can_driver_->add_callback((CAN_KONARM_1_STATUS_FRAME_ID & base_command_id_mask) | id,
+                                                  std::bind(&KonArmDriver::can_callback_status, this, std::placeholders::_1,
+                                                            std::placeholders::_2, std::placeholders::_3),
+                                                  &joint_states_[j_index]));
+    ARI_RETURN_ON_ERROR(
+    can_driver_->add_callback((CAN_KONARM_1_GET_POS_FRAME_ID & base_command_id_mask) | id,
+                              std::bind(&KonArmDriver::can_callback_get_position, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3),
+                              &joint_states_[j_index]));
+
+    ARI_RETURN_ON_ERROR(can_driver_->add_callback((CAN_KONARM_1_GET_TORQUE_FRAME_ID & base_command_id_mask) | id,
+                                                  std::bind(&KonArmDriver::can_callback_get_torque, this, std::placeholders::_1,
+                                                            std::placeholders::_2, std::placeholders::_3),
+                                                  &joint_states_[j_index]));
+
+    ARI_RETURN_ON_ERROR(can_driver_->add_callback((CAN_KONARM_1_GET_ERRORS_FRAME_ID & base_command_id_mask) | id,
+                                                  std::bind(&KonArmDriver::can_callback_get_errors, this, std::placeholders::_1,
+                                                            std::placeholders::_2, std::placeholders::_3),
+                                                  &joint_states_[j_index]));
+    ARI_RETURN_ON_ERROR(can_driver_->add_callback((CAN_KONARM_1_GET_CONFIG_FRAME_ID & base_command_id_mask) | id,
+                                                  std::bind(&KonArmDriver::can_callback_get_config, this, std::placeholders::_1,
+                                                            std::placeholders::_2, std::placeholders::_3),
+                                                  &joint_states_[j_index]));
+    ++j_index;
+  }
 
   if(control_thread_.joinable()) {
     control_thread_.join();
@@ -124,7 +159,6 @@ Status KonArmDriver::control_loop() {
 
   return Status::OK();
 }
-
 
 void KonArmDriver::can_callback_status(const CanDriver &driver, const CanFrame &frame, void *args) {
   (void)driver;
@@ -181,8 +215,6 @@ void KonArmDriver::can_callback_get_errors(const CanDriver &driver, const CanFra
   joint_state.errors.can_disconnected               = static_cast<bool>(msg.can_disconnected);
   joint_state.errors.can_error                      = static_cast<bool>(msg.can_error);
   joint_state.errors.controler_motor_limit_position = static_cast<bool>(msg.controler_motor_limit_position);
-
-  // joint_state.errors.motor_error                  = static_cast<KonarErrorState>(msg.motor_error);
 }
 
 void KonArmDriver::can_callback_get_config(const CanDriver &driver, const CanFrame &frame, void *args) {
