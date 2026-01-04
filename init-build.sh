@@ -1,7 +1,7 @@
 python3 -m venv .venv && source .venv/bin/activate
 
 # git submodule update --init --recursive
-src/sdrac_can_stranslator/sdrac_can_stranslator/can_constants/./generate-files.sh
+
 
 
 
