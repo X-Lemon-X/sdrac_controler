@@ -15,6 +15,8 @@
 
 #include "konarm_driver/konarm_driver_parameters.hpp"
 
+#include "sdrac_shared_types.hpp"
+
 using namespace std::chrono_literals;
 
 using namespace konarm_driver;
@@ -61,7 +63,6 @@ void KonArmDriver::main_thread_function() {
   RCLCPP_INFO(this->get_logger(), "Control thread stopping.");
 }
 
-
 Status KonArmDriver::on_init() {
   RCLCPP_INFO(this->get_logger(), "Init");
   param_listener_ = std::make_shared<ParamListener>(get_node_parameters_interface());
@@ -91,7 +92,6 @@ Status KonArmDriver::on_activate() {
   ARI_ASIGN_TO_OR_RETURN(can_driver_, CanDriver::Make(params_.can_interface, true, 100000, 128));
   // ARI_RETURN_ON_ERROR(can_driver_->open_can());
 
-
   if(control_thread_.joinable()) {
     control_thread_.join();
   }
@@ -120,12 +120,84 @@ Status KonArmDriver::on_shutdown() {
   return Status::OK();
 }
 
-
 Status KonArmDriver::control_loop() {
 
   return Status::OK();
 }
 
+
+void KonArmDriver::can_callback_status(const CanDriver &driver, const CanFrame &frame, void *args) {
+  (void)driver;
+  KonArmJointState &joint_state = *static_cast<KonArmJointState *>(args);
+  can_konarm_1_status_t msg;
+  if(can_konarm_1_status_unpack(&msg, frame.data, frame.size) != 0) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to unpack status message");
+    return;
+  }
+  joint_state.status = static_cast<KonarStatus>(msg.status);
+}
+
+void KonArmDriver::can_callback_get_position(const CanDriver &driver, const CanFrame &frame, void *args) {
+  (void)driver;
+  KonArmJointState &joint_state = *static_cast<KonArmJointState *>(args);
+  can_konarm_1_get_pos_t msg;
+  if(can_konarm_1_get_pos_unpack(&msg, frame.data, frame.size) != 0) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to unpack position message");
+    return;
+  }
+  joint_state.position_r  = msg.position;
+  joint_state.velocity_rs = msg.velocity;
+}
+
+void KonArmDriver::can_callback_get_torque(const CanDriver &driver, const CanFrame &frame, void *args) {
+  (void)driver;
+  KonArmJointState &joint_state = *static_cast<KonArmJointState *>(args);
+  can_konarm_1_get_torque_t msg;
+  if(can_konarm_1_get_torque_unpack(&msg, frame.data, frame.size) != 0) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to unpack torque message");
+    return;
+  }
+  joint_state.torque_nm = msg.torque;
+}
+
+void KonArmDriver::can_callback_get_errors(const CanDriver &driver, const CanFrame &frame, void *args) {
+  (void)driver;
+  KonArmJointState &joint_state = *static_cast<KonArmJointState *>(args);
+  can_konarm_1_get_errors_t msg;
+  if(can_konarm_1_get_errors_unpack(&msg, frame.data, frame.size) != 0) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to unpack errors message");
+    return;
+  }
+  joint_state.errors.temp_engine_overheating        = static_cast<bool>(msg.temp_engine_overheating);
+  joint_state.errors.temp_driver_overheating        = static_cast<bool>(msg.temp_driver_overheating);
+  joint_state.errors.temp_board_overheating         = static_cast<bool>(msg.temp_board_overheating);
+  joint_state.errors.temp_engine_sensor_disconnect  = static_cast<bool>(msg.temp_engine_sensor_disconnect);
+  joint_state.errors.temp_driver_sensor_disconnect  = static_cast<bool>(msg.temp_driver_sensor_disconnect);
+  joint_state.errors.temp_board_sensor_disconnect   = static_cast<bool>(msg.temp_board_sensor_disconnect);
+  joint_state.errors.encoder_arm_disconnect         = static_cast<bool>(msg.encoder_arm_disconnect);
+  joint_state.errors.encoder_motor_disconnect       = static_cast<bool>(msg.encoder_motor_disconnect);
+  joint_state.errors.baord_overvoltage              = static_cast<bool>(msg.board_overvoltage);
+  joint_state.errors.baord_undervoltage             = static_cast<bool>(msg.board_undervoltage);
+  joint_state.errors.can_disconnected               = static_cast<bool>(msg.can_disconnected);
+  joint_state.errors.can_error                      = static_cast<bool>(msg.can_error);
+  joint_state.errors.controler_motor_limit_position = static_cast<bool>(msg.controler_motor_limit_position);
+
+  // joint_state.errors.motor_error                  = static_cast<KonarErrorState>(msg.motor_error);
+}
+
+void KonArmDriver::can_callback_get_config(const CanDriver &driver, const CanFrame &frame, void *args) {
+  (void)driver;
+  KonArmJointState &joint_state = *static_cast<KonArmJointState *>(args);
+
+  canc::CanMsg can_msg;
+  can_msg.id   = frame.id;
+  can_msg.size = frame.size;
+  std::memcpy(can_msg.data, frame.data, frame.size);
+  can_msg.fdcan = false;
+  if(joint_state.config_sender.unpack(can_msg)) {
+    joint_state.config = joint_state.config_sender.get_unpacked_structure();
+  }
+}
 
 int main(int argc, char *argv[]) {
   rclcpp::init(argc, argv);

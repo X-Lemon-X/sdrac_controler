@@ -22,10 +22,12 @@
 #include "can_device/can_messages.h"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include <array>
 #include <atomic>
 #include <thread>
 
 #include "konarm_driver/konarm_driver_parameters.hpp"
+#include "sdrac_shared_types.hpp"
 
 using namespace std::chrono_literals;
 
@@ -47,35 +49,24 @@ enum class KonarErrorState : uint8_t {
   FAULT = CAN_KONARM_1_GET_ERRORS_CAN_ERROR_FAULT_CHOICE
 };
 
-struct KonArmConfiguration {
-  float stepper_motor_steps_per_rev;
-  float stepper_motor_gear_ratio;
-  float stepper_motor_max_velocity;
-  float stepper_motor_min_velocity;
-  float stepper_motor_reverse;
-  float stepper_motor_enable_reversed;
-  float stepper_motor_timer_prescaler;
-  float encoder_arm_offset;
-  float encoder_arm_reverse;
-  float encoder_arm_dead_zone_correction_angle;
-  float encoder_arm_velocity_sample_amount;
-  float encoder_motor_offset;
-  float encoder_motor_reverse;
-  float encoder_motor_dead_zone_correction_angle;
-  float encoder_motor_velocity_sample_amount;
-  float encoder_motor_enable;
-  float pid_p;
-  float pid_i;
-  float pid_d;
-  float movement_max_velocity;
-  float movement_limit_lower;
-  float movement_limit_upper;
-  float movement_control_mode;
-  float movement_max_acceleration;
+enum class MovementControlMode : uint8_t {
+  POSITION = CAN_KONARM_1_SET_CONTROL_MODE_CONTROL_MODE_POSITION_CONTROL_CHOICE,
+  VELOCITY = CAN_KONARM_1_SET_CONTROL_MODE_CONTROL_MODE_VELOCITY_CONTROL_CHOICE,
+  TORQUE   = CAN_KONARM_1_SET_CONTROL_MODE_CONTROL_MODE_TORQUE_CONTROL_CHOICE
 };
 
 
-struct KonArmJointState {};
+struct KonArmJointState {
+  float position_r                 = 0; // radians
+  float velocity_rs                = 0; // radians per second
+  float torque_nm                  = 0; // Nm
+  int effector_control_p           = 0; // 0-100%
+  KonarStatus status               = {};
+  MovementControlMode control_mode = {};
+  ErrorData errors                 = {};
+  ModuleConfig config              = {};
+  canc::CanStructureSender<ModuleConfig> config_sender;
+};
 
 
 class KonArmDriver : public rclcpp::Node {
@@ -94,6 +85,14 @@ private:
 
   void main_thread_function();
 
+  void can_callback_status(const CanDriver &driver, const CanFrame &frame, void *args);
+  void can_callback_get_position(const CanDriver &driver, const CanFrame &frame, void *args);
+  void can_callback_get_torque(const CanDriver &driver, const CanFrame &frame, void *args);
+  void can_callback_get_errors(const CanDriver &driver, const CanFrame &frame, void *args);
+  void can_callback_get_config(const CanDriver &driver, const CanFrame &frame, void *args);
+
+
+  /// ROS2 COMMUNICATION
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
   size_t count_;
@@ -102,9 +101,13 @@ private:
   std::atomic<bool> active_{ false };
   std::thread control_thread_;
 
+  /// CAN DRIVER
   std::shared_ptr<CanDriver> can_driver_;
 
+  /// JOINT STATES
+  std::array<KonArmJointState, 6> joint_states_;
 
+  /// NODE PARAMETERS
   std::shared_ptr<ParamListener> param_listener_;
   Params params_;
 };

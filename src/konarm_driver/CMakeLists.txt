@@ -35,6 +35,8 @@ set(EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(konarm_driver  src/konarm_driver.cpp)
 
+add_subdirectory(sdrac_shared_types)
+
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
@@ -51,6 +53,7 @@ ament_target_dependencies(
 target_link_libraries(
   ${PROJECT_NAME} PUBLIC
     ${PARAMETERS_LIB_NAME}
+    sdrac_shared_types
 )
 
 

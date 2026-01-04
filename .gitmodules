@@ -19,3 +19,6 @@
 [submodule "src/ros_ari_shared_types"]
 	path = src/ros_ari_shared_types
 	url = git@github.com:X-Lemon-X/ros_ari_shared_types.git
+[submodule "src/konarm_driver/sdrac_shared_types"]
+	path = src/konarm_driver/sdrac_shared_types
+	url = git@github.com:X-Lemon-X/sdrac_shared_types.git
