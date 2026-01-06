@@ -424,10 +424,7 @@ Status KonArmDriver::control_loop() {
     publisher_diagnostics_->publish(diagnostic_msg);
     timer_errors_request_->reset();
   }
-
-
   publisher_joint_states_->publish(joint_state_msg);
-
   return Status::OK();
 }
 
