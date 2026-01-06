@@ -96,17 +96,6 @@ Status KonArmDriver::on_init() {
                                                                 std::bind(&KonArmDriver::service_set_config_callback,
                                                                           this, std::placeholders::_1,
                                                                           std::placeholders::_2));
-
-
-  // publisher_          = this->create_publisher<std_msgs::msg::String>("topic", 10);
-  // auto timer_callback = [this]() -> void {
-  //   auto message = std_msgs::msg::String();
-  //   message.data = "Hello, world! " + std::to_string(this->count_++);
-  //   RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-  //   this->publisher_->publish(message);
-  // };
-  // timer_ = this->create_wall_timer(500ms, timer_callback);
-
   return Status::OK();
 }
 
