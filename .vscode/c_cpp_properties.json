@@ -7,6 +7,7 @@
       },
       "includePath": [
         "/home/lemonx/it/sdrac_controler/install/vesc_hardware/include/**",
+        "/home/lemonx/it/sdrac_controler/install/konarm_driver/include/**",
         "/home/lemonx/it/sdrac_controler/install/can_device/include/**",
         "/home/lemonx/it/sdrac_controler/install/ari_shared_types/include/**",
         "/opt/ros/jazzy/include/**",

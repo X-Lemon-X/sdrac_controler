@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>konarm_driver</name>
+  <name>konarm_driver_msg</name>
   <version>0.1.0</version>
   <description>KonARM driver</description>
   <maintainer email="dodpat02@gmail.com">Patryk Dudziński</maintainer>
@@ -12,12 +12,11 @@
   <depend>ament_cmake</depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>diagnostic_msgs</depend>
-  <depend>generate_parameter_library</depend>
-  <depend>sensor_msgs</depend>
-  <depend>ari_shared_types</depend>
-  <depend>can_device</depend>
-  <depend>konarm_driver_msg</depend>
+
+
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

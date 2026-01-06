@@ -23,9 +23,9 @@ konarm_driver:
       default_value: 2,
       description: "Frequency in Hz at which error frames are requested from the KonArm.",
     }
-  timeout_ms:
+  timeout_s:
     {
-      type: int,
-      default_value: 500,
-      description: "Timeout in milliseconds to consider the KonArm disconnected if no messages are received.",
+      type: double,
+      default_value: 0.5,
+      description: "Timeout in seconds to consider the KonArm disconnected if no messages are received.",
     }

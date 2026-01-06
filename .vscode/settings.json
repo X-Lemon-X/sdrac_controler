@@ -1,12 +1,27 @@
 {
   "python.autoComplete.extraPaths": [
-    "/opt/ros/jazzy/lib/python3.10/site-packages",
-    "/opt/ros/jazzy/local/lib/python3.10/dist-packages"
+    "/home/lemonx/it/sdrac_controler/build/sdrac_description",
+    "/home/lemonx/it/sdrac_controler/install/sdrac_description/lib/python3.12/site-packages",
+    "/home/lemonx/it/sdrac_controler/build/sdrac_can_stranslator",
+    "/home/lemonx/it/sdrac_controler/install/sdrac_can_stranslator/lib/python3.12/site-packages",
+    "/home/lemonx/it/sdrac_controler/build/pilot_6axis",
+    "/home/lemonx/it/sdrac_controler/install/pilot_6axis/lib/python3.12/site-packages",
+    "/home/lemonx/it/sdrac_controler/build/controler",
+    "/home/lemonx/it/sdrac_controler/install/controler/lib/python3.12/site-packages",
+    "/opt/ros/jazzy/lib/python3.12/site-packages"
   ],
   "python.analysis.extraPaths": [
-    "/opt/ros/jazzy/lib/python3.10/site-packages",
-    "/opt/ros/jazzy/local/lib/python3.10/dist-packages"
+    "/home/lemonx/it/sdrac_controler/build/sdrac_description",
+    "/home/lemonx/it/sdrac_controler/install/sdrac_description/lib/python3.12/site-packages",
+    "/home/lemonx/it/sdrac_controler/build/sdrac_can_stranslator",
+    "/home/lemonx/it/sdrac_controler/install/sdrac_can_stranslator/lib/python3.12/site-packages",
+    "/home/lemonx/it/sdrac_controler/build/pilot_6axis",
+    "/home/lemonx/it/sdrac_controler/install/pilot_6axis/lib/python3.12/site-packages",
+    "/home/lemonx/it/sdrac_controler/build/controler",
+    "/home/lemonx/it/sdrac_controler/install/controler/lib/python3.12/site-packages",
+    "/opt/ros/jazzy/lib/python3.12/site-packages"
   ],
   "ros.distro": "jazzy",
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "ROS2.distro": "jazzy"
 }

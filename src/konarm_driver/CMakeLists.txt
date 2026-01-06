@@ -17,6 +17,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   sensor_msgs
   ari_shared_types
   can_device
+  diagnostic_msgs
+  konarm_driver_msg
 )
 
 set(CMAKE_CXX_STANDARD 20)
@@ -33,7 +35,11 @@ generate_parameter_library( ${PARAMETERS_LIB_NAME}
 
 set(EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(konarm_driver  src/konarm_driver.cpp)
+
+add_executable(konarm_driver
+src/konarm_driver.cpp
+src/konarm_joint_driver.cpp
+)
 
 add_subdirectory(sdrac_shared_types)
 
@@ -58,6 +64,7 @@ target_link_libraries(
 
 
 
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -79,7 +86,6 @@ install(DIRECTORY include/
 )
 
 
-# ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-# ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 ament_package()

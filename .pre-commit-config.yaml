@@ -12,4 +12,5 @@ repos:
     hooks:
       - id: clang-format
         args: [--verbose]
-        include: '\.(cpp|hpp|h|c|cc|cxx)$'
+        types_or: [c, c++]
+        # include: '\.(cpp|hpp|h|c|cc|cxx)$'

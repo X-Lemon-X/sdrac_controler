@@ -2,26 +2,26 @@
 #include <memory>
 #include <string>
 
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
-
 #include "ari_shared_types/status.hpp"
-#include "konarm_driver/konarm_driver.hpp"
-
+#include "ari_shared_types/timing.hpp"
 #include "can_device/can_device.hpp"
 #include "can_device/can_helper.hpp"
 #include "can_device/can_messages.h"
-
-
+#include "konarm_driver/konarm_driver.hpp"
 #include "konarm_driver/konarm_driver_parameters.hpp"
-
+#include "konarm_driver/konarm_joint_driver.hpp"
+#include "konarm_driver_msg/srv/konarm_get_config.hpp"
+#include "konarm_driver_msg/srv/konarm_set_config.hpp"
+#include "rclcpp/rclcpp.hpp"
 #include "sdrac_shared_types.hpp"
+#include "std_msgs/msg/string.hpp"
 
 using namespace std::chrono_literals;
 
 using namespace konarm_driver;
 
-KonArmDriver::KonArmDriver() : Node("kon_arm_driver"), count_(0) {
+
+KonArmDriver::KonArmDriver() : Node("kon_arm_driver") {
   RCLCPP_INFO(this->get_logger(), "Starting KonArm Driver Node");
   on_init();
   on_activate();
@@ -69,15 +69,43 @@ Status KonArmDriver::on_init() {
   param_listener_->setUserCallback([this](const auto &params) { reconfigure_callback(params); });
   params_ = param_listener_->get_params();
 
+  publisher_joint_states_ =
+  this->create_publisher<sensor_msgs::msg::JointState>("joint_states", rclcpp::QoS(10).best_effort());
+  publisher_diagnostics_ =
+  this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("diagnostics", rclcpp::QoS(10).best_effort());
 
-  publisher_          = this->create_publisher<std_msgs::msg::String>("topic", 10);
-  auto timer_callback = [this]() -> void {
-    auto message = std_msgs::msg::String();
-    message.data = "Hello, world! " + std::to_string(this->count_++);
-    RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-    this->publisher_->publish(message);
-  };
-  timer_ = this->create_wall_timer(500ms, timer_callback);
+  subscription_joint_commands_ =
+  this->create_subscription<sensor_msgs::msg::JointState>("joint_control", rclcpp::QoS(10).best_effort(),
+                                                          std::bind(&KonArmDriver::subscription_joint_control_callback,
+                                                                    this, std::placeholders::_1));
+  subscription_effector_commands_ =
+  this->create_subscription<std_msgs::msg::Int8>("effector_control", rclcpp::QoS(10).best_effort(),
+                                                 std::bind(&KonArmDriver::subscription_effector_control_callback,
+                                                           this, std::placeholders::_1));
+
+  subscription_emergency_stop_ =
+  this->create_subscription<std_msgs::msg::Bool>("emergency_stop", rclcpp::QoS(10).best_effort(),
+                                                 std::bind(&KonArmDriver::subscription_emergency_stop_callback,
+                                                           this, std::placeholders::_1));
+
+  this->create_service<konarm_driver_msg::srv::KonarmGetConfig>("konarm_get_config",
+                                                                std::bind(&KonArmDriver::service_get_config_callback,
+                                                                          this, std::placeholders::_1,
+                                                                          std::placeholders::_2));
+  this->create_service<konarm_driver_msg::srv::KonarmSetConfig>("konarm_set_config",
+                                                                std::bind(&KonArmDriver::service_set_config_callback,
+                                                                          this, std::placeholders::_1,
+                                                                          std::placeholders::_2));
+
+
+  // publisher_          = this->create_publisher<std_msgs::msg::String>("topic", 10);
+  // auto timer_callback = [this]() -> void {
+  //   auto message = std_msgs::msg::String();
+  //   message.data = "Hello, world! " + std::to_string(this->count_++);
+  //   RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+  //   this->publisher_->publish(message);
+  // };
+  // timer_ = this->create_wall_timer(500ms, timer_callback);
 
   return Status::OK();
 }
@@ -89,18 +117,20 @@ Status KonArmDriver::on_activate() {
   }
   RCLCPP_INFO(this->get_logger(), "Activating...");
 
-  ARI_ASIGN_TO_OR_RETURN(can_driver_, CanDriver::Make(params_.can_interface, true, 100000, 128));
+  ARI_ASIGN_TO_OR_RETURN(can_driver_, CanDriver::Make(params_.can_interface, true, 100000, 256));
 
   static constexpr uint32_t base_konarm_id_mask = 0xff0;
-  std::vector<uint32_t> can_ids                 = {
-    CAN_KONARM_1_STATUS_FRAME_ID & base_konarm_id_mask, CAN_KONARM_2_STATUS_FRAME_ID & base_konarm_id_mask,
-    CAN_KONARM_3_STATUS_FRAME_ID & base_konarm_id_mask, CAN_KONARM_4_STATUS_FRAME_ID & base_konarm_id_mask,
-    CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask, CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask
-  };
+  joint_drivers_.emplace_back(get_logger(), can_driver_, CAN_KONARM_1_STATUS_FRAME_ID & base_konarm_id_mask);
+  joint_drivers_.emplace_back(get_logger(), can_driver_, CAN_KONARM_2_STATUS_FRAME_ID & base_konarm_id_mask);
+  joint_drivers_.emplace_back(get_logger(), can_driver_, CAN_KONARM_3_STATUS_FRAME_ID & base_konarm_id_mask);
+  joint_drivers_.emplace_back(get_logger(), can_driver_, CAN_KONARM_4_STATUS_FRAME_ID & base_konarm_id_mask);
+  joint_drivers_.emplace_back(get_logger(), can_driver_, CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask);
+  joint_drivers_.emplace_back(get_logger(), can_driver_, CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask);
 
-  for(const auto &id : can_ids) {
-    joint_driver_.emplace_back(get_logger(), can_driver_, id);
-  }
+  joint_controls_.resize(joint_drivers_.size());
+
+  timer_errors_request_ = std::make_shared<ari::FrequencyTimer>(params_.error_get_hz);
+
 
   if(control_thread_.joinable()) {
     control_thread_.join();
@@ -130,255 +160,274 @@ Status KonArmDriver::on_shutdown() {
   return Status::OK();
 }
 
+void KonArmDriver::subscription_joint_control_callback(const sensor_msgs::msg::JointState::SharedPtr msg) {
+  for(size_t index = 0; index < joint_controls_.size(); ++index) {
+    auto &joint_control = joint_controls_[index];
+    // Find index of joint in message
+    if(index < msg->position.size()) {
+      joint_control.position_r = msg->position[index];
+    }
+    if(index < msg->velocity.size()) {
+      joint_control.velocity_rs = msg->velocity[index];
+    }
+    if(index < msg->effort.size()) {
+      joint_control.torque_nm = msg->effort[index];
+    }
+
+    // Determine control mode based on which fields are set
+    if(index < msg->position.size()) {
+      joint_control.control_mode = MovementControlMode::POSITION;
+    } else if(index < msg->velocity.size()) {
+      joint_control.control_mode = MovementControlMode::VELOCITY;
+    } else if(index < msg->effort.size()) {
+      joint_control.control_mode = MovementControlMode::TORQUE;
+    } else {
+      joint_control.control_mode = MovementControlMode::NONE;
+    }
+  }
+}
+
+void KonArmDriver::subscription_effector_control_callback(const std_msgs::msg::Int8::SharedPtr msg) {
+  int8_t command = msg->data;
+  if(command < 0) {
+    command = 0;
+  } else if(command > 100) {
+    command = 100;
+  }
+  for(auto &joint_driver : joint_drivers_) {
+    joint_driver.set_effector_control(static_cast<uint8_t>(command));
+  }
+}
+
+void KonArmDriver::subscription_emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+  for(auto &joint_driver : joint_drivers_) {
+    joint_driver.set_emergency_stop(msg->data);
+  }
+  if(msg->data) {
+    RCLCPP_WARN(this->get_logger(), "KonArm EMERGENCY STOP!");
+  } else {
+    RCLCPP_INFO(this->get_logger(), "KonArm emergency stop deactivated.");
+  }
+}
+
+void KonArmDriver::service_set_config_callback(const std::shared_ptr<konarm_driver_msg::srv::KonarmSetConfig::Request> request,
+                                               std::shared_ptr<konarm_driver_msg::srv::KonarmSetConfig::Response> response) {
+  //
+  if(request->joint_index_to_configure >= joint_drivers_.size()) {
+    response->success = false;
+    RCLCPP_WARN(this->get_logger(), "Received KonarmSetConfig request with invalid joint index %u",
+                request->joint_index_to_configure);
+    return;
+  }
+  auto &joint_driver = joint_drivers_[request->joint_index_to_configure];
+  auto mode          = static_cast<MovementControlMode>(request->movement_control_mode);
+  if(mode != MovementControlMode::POSITION && mode != MovementControlMode::VELOCITY && mode != MovementControlMode::TORQUE) {
+    RCLCPP_WARN(this->get_logger(), "Received KonarmSetConfig request with invalid movement control mode %u",
+                request->movement_control_mode);
+    response->success = false;
+    return;
+  }
+
+  ModuleConfig config;
+  config.stepper_motor_steps_per_rev              = request->stepper_motor_steps_per_rev;
+  config.stepper_motor_gear_ratio                 = request->stepper_motor_gear_ratio;
+  config.stepper_motor_max_velocity               = request->stepper_motor_max_velocity;
+  config.stepper_motor_min_velocity               = request->stepper_motor_min_velocity;
+  config.stepper_motor_reverse                    = request->stepper_motor_reverse;
+  config.stepper_motor_enable_reversed            = request->stepper_motor_enable_reversed;
+  config.stepper_motor_timer_prescaler            = request->stepper_motor_timer_prescaler;
+  config.encoder_arm_offset                       = request->encoder_arm_offset;
+  config.encoder_arm_reverse                      = request->encoder_arm_reverse;
+  config.encoder_arm_dead_zone_correction_angle   = request->encoder_arm_dead_zone_correction_angle;
+  config.encoder_arm_velocity_sample_amount       = request->encoder_arm_velocity_sample_amount;
+  config.encoder_motor_offset                     = request->encoder_motor_offset;
+  config.encoder_motor_reverse                    = request->encoder_motor_reverse;
+  config.encoder_motor_dead_zone_correction_angle = request->encoder_motor_dead_zone_correction_angle;
+  config.encoder_motor_velocity_sample_amount     = request->encoder_motor_velocity_sample_amount;
+  config.encoder_motor_enable                     = request->encoder_motor_enable;
+  config.pid_p                                    = request->pid_p;
+  config.pid_i                                    = request->pid_i;
+  config.pid_d                                    = request->pid_d;
+  config.movement_max_velocity                    = request->movement_max_velocity;
+  config.movement_limit_lower                     = request->movement_limit_lower;
+  config.movement_limit_upper                     = request->movement_limit_upper;
+  config.movement_control_mode                    = static_cast<uint8_t>(mode);
+  config.movement_max_acceleration                = request->movement_max_acceleration;
+  config.can_base_id                              = request->can_base_id;
+  auto status                                     = joint_driver.set_config(config);
+  response->success                               = status.ok();
+  return;
+}
+
+void KonArmDriver::service_get_config_callback(const std::shared_ptr<konarm_driver_msg::srv::KonarmGetConfig::Request> request,
+                                               std::shared_ptr<konarm_driver_msg::srv::KonarmGetConfig::Response> response) {
+  //
+  if(request->joint_index_to_get_configure >= joint_drivers_.size()) {
+    response->success = false;
+    RCLCPP_WARN(this->get_logger(), "Received KonarmGetConfig request with invalid joint index %u",
+                request->joint_index_to_get_configure);
+    return;
+  }
+
+  auto &joint_driver = joint_drivers_[request->joint_index_to_get_configure];
+  auto status        = joint_driver.get_config().get_request_state();
+  if(status != canc::CanStructureRequestState::RECEIVED) {
+    RCLCPP_WARN(this->get_logger(), "KonarmGetConfig request for joint index %u failed, config not received.",
+                request->joint_index_to_get_configure);
+    response->success = false;
+    return;
+  }
+  ModuleConfig config                                = joint_driver.get_config().get_unpacked_structure();
+  response->stepper_motor_steps_per_rev              = config.stepper_motor_steps_per_rev;
+  response->stepper_motor_gear_ratio                 = config.stepper_motor_gear_ratio;
+  response->stepper_motor_max_velocity               = config.stepper_motor_max_velocity;
+  response->stepper_motor_min_velocity               = config.stepper_motor_min_velocity;
+  response->stepper_motor_reverse                    = config.stepper_motor_reverse;
+  response->stepper_motor_enable_reversed            = config.stepper_motor_enable_reversed;
+  response->stepper_motor_timer_prescaler            = config.stepper_motor_timer_prescaler;
+  response->encoder_arm_offset                       = config.encoder_arm_offset;
+  response->encoder_arm_reverse                      = config.encoder_arm_reverse;
+  response->encoder_arm_dead_zone_correction_angle   = config.encoder_arm_dead_zone_correction_angle;
+  response->encoder_arm_velocity_sample_amount       = config.encoder_arm_velocity_sample_amount;
+  response->encoder_motor_offset                     = config.encoder_motor_offset;
+  response->encoder_motor_reverse                    = config.encoder_motor_reverse;
+  response->encoder_motor_dead_zone_correction_angle = config.encoder_motor_dead_zone_correction_angle;
+  response->encoder_motor_velocity_sample_amount     = config.encoder_motor_velocity_sample_amount;
+  response->encoder_motor_enable                     = config.encoder_motor_enable;
+  response->pid_p                                    = config.pid_p;
+  response->pid_i                                    = config.pid_i;
+  response->pid_d                                    = config.pid_d;
+  response->movement_max_velocity                    = config.movement_max_velocity;
+  response->movement_limit_lower                     = config.movement_limit_lower;
+  response->movement_limit_upper                     = config.movement_limit_upper;
+  response->movement_control_mode                    = config.movement_control_mode;
+  response->movement_max_acceleration                = config.movement_max_acceleration;
+  response->can_base_id                              = config.can_base_id;
+  response->success                                  = true;
+  return;
+}
+
 Status KonArmDriver::control_loop() {
 
-  for(auto &joint_state : joint_driver_) {
+  sensor_msgs::msg::JointState joint_state_msg;
+  joint_state_msg.header.frame_id = params_.frame_id;
+  joint_state_msg.header.stamp    = clock.now();
+  // joint_state_msg.name.resize(joint_drivers_.size());
+  joint_state_msg.position.resize(joint_drivers_.size());
+  joint_state_msg.velocity.resize(joint_drivers_.size());
+  joint_state_msg.effort.resize(joint_drivers_.size());
+
+  diagnostic_msgs::msg::DiagnosticArray diagnostic_msg;
+  diagnostic_msg.header.stamp    = clock.now();
+  diagnostic_msg.header.frame_id = params_.frame_id;
+  diagnostic_msg.status.resize(joint_drivers_.size());
+
+
+  for(size_t i = 0; i < joint_drivers_.size(); ++i) {
+    auto &joint_driver  = joint_drivers_[i];
+    auto &joint_control = joint_controls_[i];
+
     // Check connection timeout
-    auto now = clock.now();
+    auto now = clock.now() - joint_driver.get_module_connection_time();
+    if(now.seconds() > params_.timeout_s) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), clock, 5000, "Joint with base ID %u connection timeout.",
+                           joint_driver.get_joint_base_id());
+      joint_driver.request_status();
+      joint_driver.reset_state();
+      diagnostic_msg.status[i].name    = "joint_" + std::to_string(i + 1);
+      diagnostic_msg.status[i].level   = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+      diagnostic_msg.status[i].message = "disconnected";
+      continue;
+    }
+
+    if(joint_driver.get_control_mode() != joint_control.control_mode) {
+      joint_driver.set_control_mode(joint_control.control_mode);
+    }
+
+    joint_driver.request_status();
+    joint_driver.request_position();
+    joint_driver.request_torque();
+
+    if(joint_driver.get_config().get_request_state() == canc::CanStructureRequestState::NOT_REQUESTED) {
+      joint_driver.request_config();
+    } else if(joint_driver.get_config().get_request_state() == canc::CanStructureRequestState::RECEIVED) {
+    }
+
+    switch(joint_control.control_mode) {
+    case MovementControlMode::POSITION:
+      joint_driver.set_position(joint_control.position_r, joint_control.velocity_rs);
+      break;
+    case MovementControlMode::VELOCITY: joint_driver.set_velocity(joint_control.velocity_rs); break;
+    case MovementControlMode::TORQUE: joint_driver.set_torque(joint_control.torque_nm); break;
+    case MovementControlMode::NONE: break;
+    default: break;
+    }
+
+
+    // joint_state_msg.name[i]     = "joint_" + std::to_string(i + 1);
+    joint_state_msg.position[i] = joint_driver.get_position();
+    joint_state_msg.velocity[i] = joint_driver.get_velocity();
+    joint_state_msg.effort[i]   = joint_driver.get_torque();
+
+    /// Diagnostics
+    if(timer_errors_request_->should_trigger()) {
+      joint_driver.request_errors();
+      diagnostic_msg.status[i].name    = "joint_" + std::to_string(i + 1);
+      diagnostic_msg.status[i].level   = joint_driver.get_status() == KonarStatus::OK ?
+                                         diagnostic_msgs::msg::DiagnosticStatus::OK :
+                                         diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+      diagnostic_msg.status[i].message = to_string(joint_driver.get_status());
+      auto &dval                       = diagnostic_msg.status[i].values;
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "temp_engine_overheating";
+      dval.back().value = std::to_string(joint_driver.get_errors().temp_engine_overheating);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "temp_driver_overheating";
+      dval.back().value = std::to_string(joint_driver.get_errors().temp_driver_overheating);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "temp_board_overheating";
+      dval.back().value = std::to_string(joint_driver.get_errors().temp_board_overheating);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "temp_engine_sensor_disconnect";
+      dval.back().value = std::to_string(joint_driver.get_errors().temp_engine_sensor_disconnect);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "temp_driver_sensor_disconnect";
+      dval.back().value = std::to_string(joint_driver.get_errors().temp_driver_sensor_disconnect);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "temp_board_sensor_disconnect";
+      dval.back().value = std::to_string(joint_driver.get_errors().temp_board_sensor_disconnect);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "encoder_arm_disconnect";
+      dval.back().value = std::to_string(joint_driver.get_errors().encoder_arm_disconnect);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "encoder_motor_disconnect";
+      dval.back().value = std::to_string(joint_driver.get_errors().encoder_motor_disconnect);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "baord_overvoltage";
+      dval.back().value = std::to_string(joint_driver.get_errors().baord_overvoltage);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "baord_undervoltage";
+      dval.back().value = std::to_string(joint_driver.get_errors().baord_undervoltage);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "can_disconnected";
+      dval.back().value = std::to_string(joint_driver.get_errors().can_disconnected);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "can_error";
+      dval.back().value = std::to_string(joint_driver.get_errors().can_error);
+      dval.emplace_back(diagnostic_msgs::msg::KeyValue());
+      dval.back().key   = "controler_motor_limit_position";
+      dval.back().value = std::to_string(joint_driver.get_errors().controler_motor_limit_position);
+    }
   }
 
+  if(timer_errors_request_->should_trigger()) {
+    publisher_diagnostics_->publish(diagnostic_msg);
+    timer_errors_request_->reset();
+  }
+
+  publisher_joint_states_->publish(joint_state_msg);
 
   return Status::OK();
-}
-
-
-KonArmJointDriver::KonArmJointDriver(rclcpp::Logger &&logger, std::shared_ptr<CanDriver> can_driver, uint32_t joint_base_id)
-: logger_(std::move(logger)), config_sender(), can_driver_(can_driver), joint_base_id_(joint_base_id) {
-
-
-  (void)(can_driver_->add_callback((CAN_KONARM_1_STATUS_FRAME_ID & base_command_id_mask) | joint_base_id,
-                                   std::bind(&KonArmJointDriver::can_callback_status, this, std::placeholders::_1,
-                                             std::placeholders::_2, std::placeholders::_3),
-                                   nullptr));
-  (void)(can_driver_->add_callback((CAN_KONARM_1_GET_POS_FRAME_ID & base_command_id_mask) | joint_base_id,
-                                   std::bind(&KonArmJointDriver::can_callback_get_position, this,
-                                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-                                   nullptr));
-
-  (void)(can_driver_->add_callback((CAN_KONARM_1_GET_TORQUE_FRAME_ID & base_command_id_mask) | joint_base_id,
-                                   std::bind(&KonArmJointDriver::can_callback_get_torque, this,
-                                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-                                   nullptr));
-
-  (void)(can_driver_->add_callback((CAN_KONARM_1_GET_ERRORS_FRAME_ID & base_command_id_mask) | joint_base_id,
-                                   std::bind(&KonArmJointDriver::can_callback_get_errors, this,
-                                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-                                   nullptr));
-  (void)(can_driver_->add_callback((CAN_KONARM_1_GET_CONFIG_FRAME_ID & base_command_id_mask) | joint_base_id,
-                                   std::bind(&KonArmJointDriver::can_callback_get_config, this,
-                                             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-                                   nullptr));
-}
-
-KonArmJointDriver::~KonArmJointDriver() {
-  (void)can_driver_->remove_callback((CAN_KONARM_1_STATUS_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)can_driver_->remove_callback((CAN_KONARM_1_GET_POS_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)can_driver_->remove_callback((CAN_KONARM_1_GET_TORQUE_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)can_driver_->remove_callback((CAN_KONARM_1_GET_ERRORS_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)can_driver_->remove_callback((CAN_KONARM_1_GET_CONFIG_FRAME_ID & 0x00f) | joint_base_id_);
-}
-
-void KonArmJointDriver::can_callback_status(const CanDriver &driver, const CanFrame &frame, void *args) {
-  (void)driver;
-  (void)args;
-  can_konarm_1_status_t msg;
-  if(can_konarm_1_status_unpack(&msg, frame.data, frame.size) != 0) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to unpack status message");
-    return;
-  }
-  status                 = static_cast<KonarStatus>(msg.status);
-  module_connection_time = clock_.now();
-}
-
-void KonArmJointDriver::can_callback_get_position(const CanDriver &driver, const CanFrame &frame, void *args) {
-  (void)driver;
-  (void)args;
-  can_konarm_1_get_pos_t msg;
-  if(can_konarm_1_get_pos_unpack(&msg, frame.data, frame.size) != 0) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to unpack position message");
-    return;
-  }
-  state_position_r       = msg.position;
-  state_velocity_rs      = msg.velocity;
-  module_connection_time = clock_.now();
-}
-
-void KonArmJointDriver::can_callback_get_torque(const CanDriver &driver, const CanFrame &frame, void *args) {
-  (void)driver;
-  (void)args;
-  can_konarm_1_get_torque_t msg;
-  if(can_konarm_1_get_torque_unpack(&msg, frame.data, frame.size) != 0) {
-    RCLCPP_ERROR(get_logger(), "Failed to unpack torque message");
-    return;
-  }
-  state_torque_nm        = msg.torque;
-  module_connection_time = clock_.now();
-}
-
-void KonArmJointDriver::can_callback_get_errors(const CanDriver &driver, const CanFrame &frame, void *args) {
-  (void)driver;
-  (void)args;
-  can_konarm_1_get_errors_t msg;
-  if(can_konarm_1_get_errors_unpack(&msg, frame.data, frame.size) != 0) {
-    RCLCPP_ERROR(get_logger(), "Failed to unpack errors message");
-    return;
-  }
-  errors.temp_engine_overheating        = static_cast<bool>(msg.temp_engine_overheating);
-  errors.temp_driver_overheating        = static_cast<bool>(msg.temp_driver_overheating);
-  errors.temp_board_overheating         = static_cast<bool>(msg.temp_board_overheating);
-  errors.temp_engine_sensor_disconnect  = static_cast<bool>(msg.temp_engine_sensor_disconnect);
-  errors.temp_driver_sensor_disconnect  = static_cast<bool>(msg.temp_driver_sensor_disconnect);
-  errors.temp_board_sensor_disconnect   = static_cast<bool>(msg.temp_board_sensor_disconnect);
-  errors.encoder_arm_disconnect         = static_cast<bool>(msg.encoder_arm_disconnect);
-  errors.encoder_motor_disconnect       = static_cast<bool>(msg.encoder_motor_disconnect);
-  errors.baord_overvoltage              = static_cast<bool>(msg.board_overvoltage);
-  errors.baord_undervoltage             = static_cast<bool>(msg.board_undervoltage);
-  errors.can_disconnected               = static_cast<bool>(msg.can_disconnected);
-  errors.can_error                      = static_cast<bool>(msg.can_error);
-  errors.controler_motor_limit_position = static_cast<bool>(msg.controler_motor_limit_position);
-  module_connection_time                = clock_.now();
-}
-
-void KonArmJointDriver::can_callback_get_config(const CanDriver &driver, const CanFrame &frame, void *args) {
-  (void)driver;
-  (void)args;
-  canc::CanMsg can_msg;
-  can_msg.id   = frame.id;
-  can_msg.size = frame.size;
-  std::memcpy(can_msg.data, frame.data, frame.size);
-  can_msg.fdcan = false;
-  if(config_sender.unpack(can_msg)) {
-    config = config_sender.get_unpacked_structure();
-  }
-  module_connection_time = clock_.now();
-}
-
-
-Status KonArmJointDriver::request_status() {
-  CanFrame can_msg;
-  can_msg.is_remote_request = true;
-  can_msg.is_extended       = CAN_KONARM_1_GET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_STATUS_FRAME_ID & base_command_id_mask);
-  can_msg.size              = 0;
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::request_position() {
-  CanFrame can_msg;
-  can_msg.is_remote_request = true;
-  can_msg.is_extended       = CAN_KONARM_1_GET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_POS_FRAME_ID & base_command_id_mask);
-  can_msg.size              = 0;
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::request_torque() {
-  CanFrame can_msg;
-  can_msg.is_remote_request = true;
-  can_msg.is_extended       = CAN_KONARM_1_GET_TORQUE_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_TORQUE_FRAME_ID & base_command_id_mask);
-  can_msg.size              = 0;
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::request_errors() {
-  CanFrame can_msg;
-  can_msg.is_remote_request = true;
-  can_msg.is_extended       = CAN_KONARM_1_GET_ERRORS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_ERRORS_FRAME_ID & base_command_id_mask);
-  can_msg.size              = 0;
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::request_config() {
-  CanFrame can_msg;
-  can_msg.is_remote_request = true;
-  can_msg.is_extended       = CAN_KONARM_1_GET_CONFIG_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_CONFIG_FRAME_ID & base_command_id_mask);
-  can_msg.size              = 0;
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::set_position(float position_r, float velocity_rs) {
-  can_konarm_1_set_pos_t msg;
-  msg.position = position_r;
-  msg.velocity = velocity_rs;
-
-  CanFrame can_msg;
-  can_msg.is_remote_request = false;
-  can_msg.is_extended       = CAN_KONARM_1_SET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_SET_POS_FRAME_ID & base_command_id_mask);
-  can_msg.size              = CAN_KONARM_1_SET_POS_LENGTH;
-  can_konarm_1_set_pos_pack(can_msg.data, &msg, can_msg.size);
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::set_velocity(float velocity_rs) {
-  can_konarm_1_set_pos_t msg;
-  msg.position = 0.0f; // Not used in velocity mode
-  msg.velocity = velocity_rs;
-
-  CanFrame can_msg;
-  can_msg.is_remote_request = false;
-  can_msg.is_extended       = CAN_KONARM_1_SET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_SET_POS_FRAME_ID & base_command_id_mask);
-  can_msg.size              = CAN_KONARM_1_SET_POS_LENGTH;
-  can_konarm_1_set_pos_pack(can_msg.data, &msg, can_msg.size);
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::set_torque(float torque_nm) {
-  can_konarm_1_set_torque_t msg;
-  msg.torque = torque_nm;
-
-  CanFrame can_msg;
-  can_msg.is_remote_request = false;
-  can_msg.is_extended       = CAN_KONARM_1_SET_TORQUE_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_SET_TORQUE_FRAME_ID & base_command_id_mask);
-  can_msg.size              = CAN_KONARM_1_SET_TORQUE_LENGTH;
-  can_konarm_1_set_torque_pack(can_msg.data, &msg, can_msg.size);
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::set_control_mode(MovementControlMode mode) {
-  can_konarm_1_set_control_mode_t mode_msg;
-  control_mode = mode;
-  switch(mode) {
-  case MovementControlMode::POSITION:
-    mode_msg.control_mode = static_cast<uint8_t>(CAN_KONARM_1_SET_CONTROL_MODE_CONTROL_MODE_POSITION_CONTROL_CHOICE);
-    break;
-  case MovementControlMode::VELOCITY:
-    mode_msg.control_mode = static_cast<uint8_t>(CAN_KONARM_1_SET_CONTROL_MODE_CONTROL_MODE_VELOCITY_CONTROL_CHOICE);
-    break;
-  case MovementControlMode::TORQUE:
-    mode_msg.control_mode = static_cast<uint8_t>(CAN_KONARM_1_SET_CONTROL_MODE_CONTROL_MODE_TORQUE_CONTROL_CHOICE);
-    break;
-  default: return Status::Invalid("Invalid control mode");
-  }
-  CanFrame mode_can_msg;
-  mode_can_msg.is_remote_request = false;
-  mode_can_msg.is_extended       = CAN_KONARM_1_SET_CONTROL_MODE_IS_EXTENDED;
-  mode_can_msg.id   = joint_base_id_ | (CAN_KONARM_1_SET_CONTROL_MODE_FRAME_ID & base_command_id_mask);
-  mode_can_msg.size = CAN_KONARM_1_SET_CONTROL_MODE_LENGTH;
-  can_konarm_1_set_control_mode_pack(mode_can_msg.data, &mode_msg, mode_can_msg.size);
-  return can_driver_->send(mode_can_msg);
-}
-
-Status KonArmJointDriver::set_effector_control(uint8_t percent) {
-  can_konarm_1_set_effector_position_t msg;
-  msg.pos_percentage = percent;
-
-  CanFrame can_msg;
-  can_msg.is_remote_request = false;
-  can_msg.is_extended       = CAN_KONARM_1_SET_EFFECTOR_POSITION_IS_EXTENDED;
-  can_msg.id   = joint_base_id_ | (CAN_KONARM_1_SET_EFFECTOR_POSITION_FRAME_ID & base_command_id_mask);
-  can_msg.size = CAN_KONARM_1_SET_EFFECTOR_POSITION_LENGTH;
-  can_konarm_1_set_effector_position_pack(can_msg.data, &msg, can_msg.size);
-  return can_driver_->send(can_msg);
-}
-
-Status KonArmJointDriver::set_config(const ModuleConfig &config) {
-  auto frames = config_sender.pack((CAN_KONARM_1_SEND_CONFIG_FRAME_ID & base_command_id_mask) | joint_base_id_, config);
 }
 
 int main(int argc, char *argv[]) {

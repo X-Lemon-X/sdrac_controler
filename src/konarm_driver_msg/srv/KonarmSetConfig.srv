@@ -1,0 +1,42 @@
+# KonarmSetConfig.srv
+uint8 joint_index_to_configure
+
+# Stepper Motor Configuration
+float32 stepper_motor_steps_per_rev
+float32 stepper_motor_gear_ratio
+float32 stepper_motor_max_velocity
+float32 stepper_motor_min_velocity
+bool stepper_motor_reverse
+bool stepper_motor_enable_reversed
+uint32 stepper_motor_timer_prescaler
+
+# Encoder Arm Configuration
+float32 encoder_arm_offset
+bool encoder_arm_reverse
+float32 encoder_arm_dead_zone_correction_angle
+uint16 encoder_arm_velocity_sample_amount
+
+# Encoder Motor Configuration
+float32 encoder_motor_offset
+bool encoder_motor_reverse
+float32 encoder_motor_dead_zone_correction_angle
+uint16 encoder_motor_velocity_sample_amount
+bool encoder_motor_enable
+
+# PID Configuration
+float32 pid_p
+float32 pid_i
+float32 pid_d
+
+# Movement Configuration
+float32 movement_max_velocity
+float32 movement_limit_lower
+float32 movement_limit_upper
+uint8 movement_control_mode
+float32 movement_max_acceleration
+
+# CAN Configuration
+uint16 can_base_id
+
+---
+bool success
