@@ -11,6 +11,8 @@ install/
 !.vscode/*.code-snippets
 !*.code-workspace
 
+.vscode/c_cpp_properties.json
+
 # Built Visual Studio Code Extensions
 *.vsix
 

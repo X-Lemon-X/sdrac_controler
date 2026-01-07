@@ -18,6 +18,7 @@ find_package(std_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/KonarmGetConfig.srv"
   "srv/KonarmSetConfig.srv"
+  "msg/KonArmControlMode.msg"
   DEPENDENCIES std_msgs
 )
 

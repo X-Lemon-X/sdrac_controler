@@ -7,6 +7,7 @@
 #include "can_device/can_helper.hpp"
 #include "can_device/can_messages.h"
 #include "konarm_driver/konarm_joint_driver.hpp"
+
 #include "rclcpp/rclcpp.hpp"
 #include "sdrac_shared_types.hpp"
 
@@ -35,7 +36,8 @@ std::string konarm_driver::to_string(const MovementControlMode &mode) {
 };
 
 KonArmJointDriver::KonArmJointDriver(rclcpp::Logger &&logger, std::shared_ptr<CanDriver> can_driver, uint32_t joint_base_id)
-: config_sender(), _can_driver(can_driver), joint_base_id_(joint_base_id), _logger(std::move(logger)) {
+: KonArmJointDriverBase(), config_sender(), _can_driver(can_driver), joint_base_id_(joint_base_id),
+  _logger(std::move(logger)) {
 
 
   (void)(_can_driver->add_callback((CAN_KONARM_1_STATUS_FRAME_ID & base_command_id_mask) | joint_base_id,

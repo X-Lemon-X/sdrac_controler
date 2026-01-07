@@ -23,6 +23,7 @@
 #include "diagnostic_msgs/msg/diagnostic_status.hpp"
 #include "diagnostic_msgs/msg/key_value.hpp"
 #include "konarm_driver/konarm_driver_parameters.hpp"
+#include "konarm_driver_msg/msg/kon_arm_control_mode.hpp"
 #include "konarm_driver_msg/srv/konarm_get_config.hpp"
 #include "konarm_driver_msg/srv/konarm_set_config.hpp"
 #include "konarm_joint_driver.hpp"
@@ -59,6 +60,7 @@ private:
   void subscription_joint_control_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
   void subscription_effector_control_callback(const std_msgs::msg::Int8::SharedPtr msg);
   void subscription_emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void subscription_control_mode_callback(const konarm_driver_msg::msg::KonArmControlMode::SharedPtr msg);
 
   void service_get_config_callback(const std::shared_ptr<konarm_driver_msg::srv::KonarmGetConfig::Request> request,
                                    std::shared_ptr<konarm_driver_msg::srv::KonarmGetConfig::Response> response);
@@ -66,32 +68,41 @@ private:
   void service_set_config_callback(const std::shared_ptr<konarm_driver_msg::srv::KonarmSetConfig::Request> request,
                                    std::shared_ptr<konarm_driver_msg::srv::KonarmSetConfig::Response> response);
 
+  /// @brief Translates KonArm geometry joint values to generic joint values for 6dof arm
+  /// @param robot_geometry
+  /// @return Translated joint values
+  ari::Result<std::vector<double>> get_translate_from_geometry_to_joints(const std::vector<double> &robot_geometry);
+
+  /// @brief Translates generic joint 6dof arm values to KonArm geometry joint values.
+  /// @param robot_geometry
+  /// @return Translated joint values
+  ari::Result<std::vector<double>> get_translate_from_joint_to_geometry(const std::vector<double> &robot_geometry);
 
   /// THREADING
-  std::atomic<bool> active_{ false };
-  std::thread control_thread_;
+  std::atomic<bool> _active{ false };
+  std::thread _control_thread;
 
   /// CAN DRIVER
-  std::shared_ptr<CanDriver> can_driver_;
+  std::shared_ptr<CanDriver> _can_driver;
 
   /// JOINT STATES
-  std::vector<KonArmJointDriver> joint_drivers_;
-  std::vector<JointControl> joint_controls_;
-  rclcpp::Clock clock;
+  std::vector<std::shared_ptr<KonArmJointDriverBase>> _joint_drivers;
+  std::vector<JointControl> _joint_controls;
+  rclcpp::Clock _clock;
 
-  std::shared_ptr<ari::FrequencyTimer> timer_errors_request_;
+  std::shared_ptr<ari::FrequencyTimer> _timer_errors_request;
 
   ///--------------ROS2 COMMUNICATION--------------
 
   /// TOPICS PUBLISHERS
-  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_joint_states_;
-  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr publisher_diagnostics_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _publisher_joint_states;
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr _publisher_diagnostics;
 
   /// TOPICS RECIEVERS
-  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr subscription_joint_commands_;
-  rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr subscription_effector_commands_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr subscription_emergency_stop_;
-
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _subscription_joint_commands;
+  rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr _subscription_effector_commands;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _subscription_emergency_stop;
+  rclcpp::Subscription<konarm_driver_msg::msg::KonArmControlMode>::SharedPtr _subscription_control_mode;
 
   /// NODE PARAMETERS
   std::shared_ptr<ParamListener> param_listener_;

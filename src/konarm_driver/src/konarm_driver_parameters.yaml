@@ -29,3 +29,15 @@ konarm_driver:
       default_value: 0.5,
       description: "Timeout in seconds to consider the KonArm disconnected if no messages are received.",
     }
+  msg_timeout:
+    {
+      type: double,
+      default_value: 0.5,
+      description: "Timeout in seconds to consider control messages as outdated.",
+    }
+  use_sim_time:
+    {
+      type: bool,
+      default_value: false,
+      description: "Simulates konarm robot",
+    }

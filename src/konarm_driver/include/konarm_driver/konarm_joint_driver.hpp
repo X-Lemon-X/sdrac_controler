@@ -84,66 +84,95 @@ struct JointControl {
   MovementControlMode control_mode = MovementControlMode::VELOCITY;
 };
 
+class KonArmJointDriverBase {
+public:
+  KonArmJointDriverBase() {};
+  virtual ~KonArmJointDriverBase() {};
+  virtual Status request_status()                                          = 0;
+  virtual Status request_position()                                        = 0;
+  virtual Status request_torque()                                          = 0;
+  virtual Status request_errors()                                          = 0;
+  virtual Status request_config()                                          = 0;
+  virtual Status set_effector_control(uint8_t percent)                     = 0;
+  virtual Status set_position(float position_r, float velocity_rs)         = 0;
+  virtual Status set_velocity(float velocity_rs)                           = 0;
+  virtual Status set_torque(float torque_nm)                               = 0;
+  virtual Status set_control_mode(MovementControlMode mode)                = 0;
+  virtual Status set_config(const ModuleConfig &config)                    = 0;
+  virtual Status set_emergency_stop(bool stop)                             = 0;
+  virtual rclcpp::Time get_module_connection_time() const                  = 0;
+  virtual KonarStatus get_status() const                                   = 0;
+  virtual MovementControlMode get_control_mode() const                     = 0;
+  virtual const ErrorData &get_errors() const                              = 0;
+  virtual const canc::CanStructureSender<ModuleConfig> &get_config() const = 0;
+  virtual float get_position() const                                       = 0;
+  virtual float get_velocity() const                                       = 0;
+  virtual float get_torque() const                                         = 0;
+  virtual rclcpp::Time get_module_connection_time()                        = 0;
+  virtual void reset_state()                                               = 0;
+  virtual uint32_t get_joint_base_id() const                               = 0;
+};
 
-class KonArmJointDriver {
+
+class KonArmJointDriver : public KonArmJointDriverBase {
 public:
   KonArmJointDriver(rclcpp::Logger &&logger, std::shared_ptr<CanDriver> can_driver, uint32_t joint_base_id);
   ~KonArmJointDriver();
 
-  Status request_status();
-  Status request_position();
-  Status request_torque();
-  Status request_errors();
-  Status request_config();
+  virtual Status request_status() override;
+  virtual Status request_position() override;
+  virtual Status request_torque() override;
+  virtual Status request_errors() override;
+  virtual Status request_config() override;
 
-  Status set_effector_control(uint8_t percent);
-  Status set_position(float position_r, float velocity_rs);
-  Status set_velocity(float velocity_rs);
-  Status set_torque(float torque_nm);
-  Status set_control_mode(MovementControlMode mode);
-  Status set_config(const ModuleConfig &config);
+  virtual Status set_effector_control(uint8_t percent) override;
+  virtual Status set_position(float position_r, float velocity_rs) override;
+  virtual Status set_velocity(float velocity_rs) override;
+  virtual Status set_torque(float torque_nm) override;
+  virtual Status set_control_mode(MovementControlMode mode) override;
+  virtual Status set_config(const ModuleConfig &config) override;
 
-  Status set_emergency_stop(bool stop);
+  virtual Status set_emergency_stop(bool stop) override;
 
-  rclcpp::Time get_module_connection_time() const {
+  virtual rclcpp::Time get_module_connection_time() const override {
     return module_connection_time;
   }
 
-  KonarStatus get_status() const {
+  virtual KonarStatus get_status() const override {
     return status;
   }
 
-  MovementControlMode get_control_mode() const {
+  virtual MovementControlMode get_control_mode() const override {
     return control_mode;
   }
 
-  const ErrorData &get_errors() const {
+  virtual const ErrorData &get_errors() const override {
     return errors;
   }
 
-  const canc::CanStructureSender<ModuleConfig> &get_config() const {
+  virtual const canc::CanStructureSender<ModuleConfig> &get_config() const override {
     return config_sender;
   }
 
-  float get_position() const {
+  virtual float get_position() const override {
     return state_position_r;
   }
 
-  float get_velocity() const {
+  virtual float get_velocity() const override {
     return state_velocity_rs;
   }
 
-  float get_torque() const {
+  virtual float get_torque() const override {
     return state_torque_nm;
   }
 
-  rclcpp::Time get_module_connection_time() {
+  virtual rclcpp::Time get_module_connection_time() override {
     return module_connection_time;
   }
 
-  void reset_state();
+  virtual void reset_state() override;
 
-  uint32_t get_joint_base_id() const {
+  virtual uint32_t get_joint_base_id() const override {
     return joint_base_id_;
   }
 

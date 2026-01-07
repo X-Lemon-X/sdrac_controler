@@ -22,6 +22,6 @@
     "/opt/ros/jazzy/lib/python3.12/site-packages"
   ],
   "ros.distro": "jazzy",
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
   "ROS2.distro": "jazzy"
 }
