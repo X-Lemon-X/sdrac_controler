@@ -103,6 +103,7 @@ Status KonArmDriver::on_init() {
                                                                 std::bind(&KonArmDriver::service_set_config_callback,
                                                                           this, std::placeholders::_1,
                                                                           std::placeholders::_2));
+
   return Status::OK();
 }
 
@@ -130,6 +131,7 @@ Status KonArmDriver::on_activate() {
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask));
     _joint_drivers.emplace_back(
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask));
+    _clock = rclcpp::Clock(RCL_ROS_TIME);
 
   } else {
     ARI_ASIGN_TO_OR_RETURN(_can_driver, CanDriver::Make(params_.can_interface, true, 100000, 256));
@@ -145,6 +147,7 @@ Status KonArmDriver::on_activate() {
     std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask));
     _joint_drivers.emplace_back(
     std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask));
+    _clock = rclcpp::Clock(RCL_SYSTEM_TIME);
   }
   _joint_controls.resize(_joint_drivers.size());
 

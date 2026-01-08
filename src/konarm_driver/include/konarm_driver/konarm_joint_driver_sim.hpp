@@ -17,7 +17,7 @@ class KonArmJointDriverSimulation : public KonArmJointDriverBase {
 public:
   KonArmJointDriverSimulation(uint32_t joint_base_id, double p_gain = 10.0, double d_gain = 0.1)
   : KonArmJointDriverBase(), _kp(p_gain), _kd(d_gain), _clock(RCL_ROS_TIME), _joint_base_id(joint_base_id),
-    _config_sender(), _prev_tim(_clock.now()) {
+    _joint_control(), _robot_state(), _prev_tim(_clock.now()), _config_sender() {
     set_emergency_stop(true);
   }
 

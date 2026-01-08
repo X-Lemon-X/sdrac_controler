@@ -41,6 +41,10 @@ src/konarm_driver.cpp
 src/konarm_joint_driver.cpp
 )
 
+add_executable(konarm_basic_joystick_driver
+src/konarm_basic_joystick_driver.cpp
+)
+
 add_subdirectory(sdrac_shared_types)
 
 
@@ -62,6 +66,22 @@ target_link_libraries(
     sdrac_shared_types
 )
 
+target_include_directories(konarm_basic_joystick_driver PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+)
+
+ament_target_dependencies(
+  konarm_basic_joystick_driver PUBLIC
+  ${THIS_PACKAGE_INCLUDE_DEPENDS}
+)
+
+target_link_libraries(
+  konarm_basic_joystick_driver PUBLIC
+    ${PARAMETERS_LIB_NAME}
+    sdrac_shared_types
+
+)
 
 
 
@@ -80,6 +100,11 @@ endif()
 install(TARGETS ${PROJECT_NAME}
   DESTINATION lib/${PROJECT_NAME}
 )
+
+install(TARGETS konarm_basic_joystick_driver
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 install(DIRECTORY include/
   DESTINATION include/${PROJECT_NAME}
