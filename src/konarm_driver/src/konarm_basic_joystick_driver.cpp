@@ -31,7 +31,11 @@ public:
     _publisher_commands = this->create_publisher<sensor_msgs::msg::JointState>("joint_control", 10);
     _publisher_control_mode =
     this->create_publisher<konarm_driver_msg::msg::KonArmControlMode>("control_mode", 10);
+    _publisher_emergency_stop = this->create_publisher<std_msgs::msg::Bool>("emergency_stop", 10);
+
+    RCLCPP_INFO(this->get_logger(), "KonArm Joystick Driver Node started.");
   }
+
   ~KonArmJoystickDriver() {
   }
 
@@ -98,7 +102,7 @@ private:
   }
 
   bool check_button_pressed(size_t button_index, const sensor_msgs::msg::Joy::SharedPtr msg) {
-    if(button_index < 0 || button_index >= static_cast<int>(_buttons_states.size())) {
+    if(button_index < 0 || button_index >= _buttons_states.size()) {
       RCLCPP_WARN(this->get_logger(), "check_button_pressed: invalid button index %d", button_index);
       return false;
     }

@@ -41,3 +41,9 @@ konarm_driver:
       default_value: false,
       description: "Simulates konarm robot",
     }
+  use_sim_hardware:
+    {
+      type: bool,
+      default_value: false,
+      description: "Use sim hardware interface",
+    }

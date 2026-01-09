@@ -88,8 +88,6 @@ private:
   /// JOINT STATES
   std::vector<std::shared_ptr<KonArmJointDriverBase>> _joint_drivers;
   std::vector<JointControl> _joint_controls;
-  rclcpp::Clock _clock;
-
   std::shared_ptr<ari::FrequencyTimer> _timer_errors_request;
 
   ///--------------ROS2 COMMUNICATION--------------

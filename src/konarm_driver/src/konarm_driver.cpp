@@ -49,11 +49,11 @@ void KonArmDriver::main_thread_function() {
     RCLCPP_INFO(this->get_logger(), "Control thread started.");
     rclcpp::Rate rate(50); // 50 Hz control loop
 
-    while(_active) {
+    while(_active.load()) {
       auto status = control_loop();
       if(!status.ok()) {
         RCLCPP_ERROR(this->get_logger(), "Control loop error: %s", status.to_string().c_str());
-        _active = false;
+        _active.store(false);
         break;
       }
       rate.sleep();
@@ -61,6 +61,8 @@ void KonArmDriver::main_thread_function() {
 
   } catch(const std::exception &e) {
     RCLCPP_ERROR(this->get_logger(), "Exception in control loop: %s", e.what());
+    _active.store(false);
+    rclcpp::shutdown();
   }
   RCLCPP_INFO(this->get_logger(), "Control thread stopping.");
 }
@@ -117,7 +119,8 @@ Status KonArmDriver::on_activate() {
 
   static constexpr uint32_t base_konarm_id_mask = 0xfffffff0;
   _joint_drivers.clear();
-  if(params_.use_sim_time) {
+
+  if(params_.use_sim_time || params_.use_sim_hardware) {
     _can_driver = nullptr;
     _joint_drivers.emplace_back(
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_1_STATUS_FRAME_ID & base_konarm_id_mask));
@@ -131,7 +134,6 @@ Status KonArmDriver::on_activate() {
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask));
     _joint_drivers.emplace_back(
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask));
-    _clock = rclcpp::Clock(RCL_ROS_TIME);
 
   } else {
     ARI_ASIGN_TO_OR_RETURN(_can_driver, CanDriver::Make(params_.can_interface, true, 100000, 256));
@@ -147,7 +149,6 @@ Status KonArmDriver::on_activate() {
     std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask));
     _joint_drivers.emplace_back(
     std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask));
-    _clock = rclcpp::Clock(RCL_SYSTEM_TIME);
   }
   _joint_controls.resize(_joint_drivers.size());
 
@@ -235,7 +236,7 @@ ari::Result<std::vector<double>> KonArmDriver::get_translate_from_joint_to_geome
 }
 
 void KonArmDriver::subscription_joint_control_callback(const sensor_msgs::msg::JointState::SharedPtr msg) {
-  if(rclcpp::Time(msg->header.stamp) < _clock.now() - rclcpp::Duration::from_seconds(params_.msg_timeout)) {
+  if(rclcpp::Time(msg->header.stamp) < this->get_clock()->now() - rclcpp::Duration::from_seconds(params_.msg_timeout)) {
     RCLCPP_WARN(this->get_logger(), "Received joint control message with too old timestamp");
     return;
   }
@@ -290,11 +291,13 @@ void KonArmDriver::subscription_control_mode_callback(const konarm_driver_msg::m
     RCLCPP_WARN(this->get_logger(), "Received KonArmControlMode message with invalid control mode %u", msg->control_mode);
     return;
   }
-  if(rclcpp::Time(msg->header.stamp) < _clock.now() - rclcpp::Duration::from_seconds(params_.msg_timeout)) {
+  if(rclcpp::Time(msg->header.stamp) < this->get_clock()->now() - rclcpp::Duration::from_seconds(params_.msg_timeout)) {
     RCLCPP_WARN(this->get_logger(), "Received KonArmControlMode message with too old timestamp");
     return;
   }
 
+
+  RCLCPP_INFO(this->get_logger(), "Setting control mode to %s", to_string(mode).c_str());
   for(auto &joint_control : _joint_controls) {
     joint_control.control_mode = mode;
   }
@@ -401,14 +404,14 @@ Status KonArmDriver::control_loop() {
 
   sensor_msgs::msg::JointState joint_state_msg;
   joint_state_msg.header.frame_id = params_.frame_id;
-  joint_state_msg.header.stamp    = _clock.now();
+  joint_state_msg.header.stamp    = this->get_clock()->now();
   // joint_state_msg.name.resize(joint_drivers_.size());
   joint_state_msg.position.resize(_joint_drivers.size());
   joint_state_msg.velocity.resize(_joint_drivers.size());
   joint_state_msg.effort.resize(_joint_drivers.size());
 
   diagnostic_msgs::msg::DiagnosticArray diagnostic_msg;
-  diagnostic_msg.header.stamp    = _clock.now();
+  diagnostic_msg.header.stamp    = this->get_clock()->now();
   diagnostic_msg.header.frame_id = params_.frame_id;
   diagnostic_msg.status.resize(_joint_drivers.size());
 
@@ -418,10 +421,10 @@ Status KonArmDriver::control_loop() {
     auto &joint_control = _joint_controls[i];
 
     // Check connection timeout
-    auto now = _clock.now() - joint_driver->get_module_connection_time();
+    auto now = this->get_clock()->now() - joint_driver->get_module_connection_time();
     if(now.seconds() > params_.timeout_s) {
-      RCLCPP_WARN_THROTTLE(this->get_logger(), _clock, 5000, "Joint with base ID %u connection timeout.",
-                           joint_driver->get_joint_base_id());
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000,
+                           "Joint with base ID %u connection timeout.", joint_driver->get_joint_base_id());
       joint_driver->request_status();
       joint_driver->reset_state();
       diagnostic_msg.status[i].name    = "joint_" + std::to_string(i + 1);
