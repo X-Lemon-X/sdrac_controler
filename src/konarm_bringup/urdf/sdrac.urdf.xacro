@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- NOMAD -->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="nomad_robot">
+  <xacro:arg name="sdrac" default="" />
+
+
+
+  <!-- Used for fixing robot -->
+  <link name="base_link"/>
+
+
+  <!-- Import KonArm urdf model description -->
+  <xacro:include filename="$(find sdrac_description)/urdf/sdrac.xacro" />
+
+  <xacro:sdrac parent="base_link"></xacro:sdrac>
+
+
+
+
+
+</robot>

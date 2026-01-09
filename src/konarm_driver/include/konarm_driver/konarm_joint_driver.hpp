@@ -116,7 +116,7 @@ public:
 
 class KonArmJointDriver : public KonArmJointDriverBase {
 public:
-  KonArmJointDriver(rclcpp::Logger &&logger, std::shared_ptr<CanDriver> can_driver, uint32_t joint_base_id);
+  KonArmJointDriver(rclcpp::Logger &&logger, rclcpp::Clock::SharedPtr clock, std::shared_ptr<CanDriver> can_driver, uint32_t joint_base_id);
   ~KonArmJointDriver();
 
   virtual Status request_status() override;
@@ -135,7 +135,7 @@ public:
   virtual Status set_emergency_stop(bool stop) override;
 
   virtual rclcpp::Time get_module_connection_time() const override {
-    return module_connection_time;
+    return _module_connection_time;
   }
 
   virtual KonarStatus get_status() const override {
@@ -151,7 +151,7 @@ public:
   }
 
   virtual const canc::CanStructureSender<ModuleConfig> &get_config() const override {
-    return config_sender;
+    return _config_sender;
   }
 
   virtual float get_position() const override {
@@ -167,13 +167,13 @@ public:
   }
 
   virtual rclcpp::Time get_module_connection_time() override {
-    return module_connection_time;
+    return _module_connection_time;
   }
 
   virtual void reset_state() override;
 
   virtual uint32_t get_joint_base_id() const override {
-    return joint_base_id_;
+    return _joint_base_id;
   }
 
 private:
@@ -198,15 +198,15 @@ private:
   MovementControlMode control_mode = MovementControlMode::NONE;
   ErrorData errors                 = {};
   ModuleConfig config              = {};
-  rclcpp::Time module_connection_time;
-  rclcpp::Clock clock_;
+  rclcpp::Clock::SharedPtr _clock;
+  rclcpp::Time _module_connection_time;
 
   /// CAN STRUCTURE SENDERS/RECEIVERS
-  canc::CanStructureSender<ModuleConfig> config_sender;
+  canc::CanStructureSender<ModuleConfig> _config_sender;
   std::shared_ptr<CanDriver> _can_driver;
-  uint32_t joint_base_id_;
+  uint32_t _joint_base_id;
   rclcpp::Logger _logger;
-  static constexpr uint32_t base_command_id_mask = 0x00f;
+  static constexpr uint32_t _base_command_id_mask = 0x00f;
 };
 
 } // namespace konarm_driver

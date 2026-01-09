@@ -35,41 +35,44 @@ std::string konarm_driver::to_string(const MovementControlMode &mode) {
   }
 };
 
-KonArmJointDriver::KonArmJointDriver(rclcpp::Logger &&logger, std::shared_ptr<CanDriver> can_driver, uint32_t joint_base_id)
-: KonArmJointDriverBase(), config_sender(), _can_driver(can_driver), joint_base_id_(joint_base_id),
-  _logger(std::move(logger)) {
+KonArmJointDriver::KonArmJointDriver(rclcpp::Logger &&logger,
+                                     rclcpp::Clock::SharedPtr clock,
+                                     std::shared_ptr<CanDriver> can_driver,
+                                     uint32_t joint_base_id)
+: KonArmJointDriverBase(), _clock(std::move(clock)), _module_connection_time(_clock->now()), _config_sender(),
+  _can_driver(can_driver), _joint_base_id(joint_base_id), _logger(std::move(logger)) {
 
 
-  (void)(_can_driver->add_callback((CAN_KONARM_1_STATUS_FRAME_ID & base_command_id_mask) | joint_base_id,
+  (void)(_can_driver->add_callback((CAN_KONARM_1_STATUS_FRAME_ID & _base_command_id_mask) | joint_base_id,
                                    std::bind(&KonArmJointDriver::can_callback_status, this, std::placeholders::_1,
                                              std::placeholders::_2, std::placeholders::_3),
                                    nullptr));
-  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_POS_FRAME_ID & base_command_id_mask) | joint_base_id,
+  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_POS_FRAME_ID & _base_command_id_mask) | joint_base_id,
                                    std::bind(&KonArmJointDriver::can_callback_get_position, this,
                                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                                    nullptr));
 
-  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_TORQUE_FRAME_ID & base_command_id_mask) | joint_base_id,
+  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_TORQUE_FRAME_ID & _base_command_id_mask) | joint_base_id,
                                    std::bind(&KonArmJointDriver::can_callback_get_torque, this,
                                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                                    nullptr));
 
-  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_ERRORS_FRAME_ID & base_command_id_mask) | joint_base_id,
+  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_ERRORS_FRAME_ID & _base_command_id_mask) | joint_base_id,
                                    std::bind(&KonArmJointDriver::can_callback_get_errors, this,
                                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                                    nullptr));
-  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_CONFIG_FRAME_ID & base_command_id_mask) | joint_base_id,
+  (void)(_can_driver->add_callback((CAN_KONARM_1_GET_CONFIG_FRAME_ID & _base_command_id_mask) | joint_base_id,
                                    std::bind(&KonArmJointDriver::can_callback_get_config, this,
                                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                                    nullptr));
 }
 
 KonArmJointDriver::~KonArmJointDriver() {
-  (void)_can_driver->remove_callback((CAN_KONARM_1_STATUS_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_POS_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_TORQUE_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_ERRORS_FRAME_ID & 0x00f) | joint_base_id_);
-  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_CONFIG_FRAME_ID & 0x00f) | joint_base_id_);
+  (void)_can_driver->remove_callback((CAN_KONARM_1_STATUS_FRAME_ID & 0x00f) | _joint_base_id);
+  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_POS_FRAME_ID & 0x00f) | _joint_base_id);
+  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_TORQUE_FRAME_ID & 0x00f) | _joint_base_id);
+  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_ERRORS_FRAME_ID & 0x00f) | _joint_base_id);
+  (void)_can_driver->remove_callback((CAN_KONARM_1_GET_CONFIG_FRAME_ID & 0x00f) | _joint_base_id);
 }
 
 void KonArmJointDriver::can_callback_status(const CanDriver &driver, const CanFrame &frame, void *args) {
@@ -80,8 +83,8 @@ void KonArmJointDriver::can_callback_status(const CanDriver &driver, const CanFr
     RCLCPP_ERROR(this->get_logger(), "Failed to unpack status message");
     return;
   }
-  status                 = static_cast<KonarStatus>(msg.status);
-  module_connection_time = clock_.now();
+  status                  = static_cast<KonarStatus>(msg.status);
+  _module_connection_time = _clock->now();
 }
 
 void KonArmJointDriver::can_callback_get_position(const CanDriver &driver, const CanFrame &frame, void *args) {
@@ -92,9 +95,9 @@ void KonArmJointDriver::can_callback_get_position(const CanDriver &driver, const
     RCLCPP_ERROR(this->get_logger(), "Failed to unpack position message");
     return;
   }
-  state_position_r       = msg.position;
-  state_velocity_rs      = msg.velocity;
-  module_connection_time = clock_.now();
+  state_position_r        = msg.position;
+  state_velocity_rs       = msg.velocity;
+  _module_connection_time = _clock->now();
 }
 
 void KonArmJointDriver::can_callback_get_torque(const CanDriver &driver, const CanFrame &frame, void *args) {
@@ -105,8 +108,8 @@ void KonArmJointDriver::can_callback_get_torque(const CanDriver &driver, const C
     RCLCPP_ERROR(get_logger(), "Failed to unpack torque message");
     return;
   }
-  state_torque_nm        = msg.torque;
-  module_connection_time = clock_.now();
+  state_torque_nm         = msg.torque;
+  _module_connection_time = _clock->now();
 }
 
 void KonArmJointDriver::can_callback_get_errors(const CanDriver &driver, const CanFrame &frame, void *args) {
@@ -130,7 +133,7 @@ void KonArmJointDriver::can_callback_get_errors(const CanDriver &driver, const C
   errors.can_disconnected               = static_cast<bool>(msg.can_disconnected);
   errors.can_error                      = static_cast<bool>(msg.can_error);
   errors.controler_motor_limit_position = static_cast<bool>(msg.controler_motor_limit_position);
-  module_connection_time                = clock_.now();
+  _module_connection_time               = _clock->now();
 }
 
 void KonArmJointDriver::can_callback_get_config(const CanDriver &driver, const CanFrame &frame, void *args) {
@@ -141,17 +144,17 @@ void KonArmJointDriver::can_callback_get_config(const CanDriver &driver, const C
   can_msg.size = frame.size;
   std::memcpy(can_msg.data, frame.data, frame.size);
   can_msg.fdcan = false;
-  if(config_sender.unpack(can_msg)) {
-    config = config_sender.get_unpacked_structure();
+  if(_config_sender.unpack(can_msg)) {
+    config = _config_sender.get_unpacked_structure();
   }
-  module_connection_time = clock_.now();
+  _module_connection_time = _clock->now();
 }
 
 Status KonArmJointDriver::request_status() {
   CanFrame can_msg;
   can_msg.is_remote_request = true;
   can_msg.is_extended       = CAN_KONARM_1_GET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_STATUS_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_STATUS_FRAME_ID & _base_command_id_mask);
   can_msg.size              = 0;
   return _can_driver->send(can_msg);
 }
@@ -160,7 +163,7 @@ Status KonArmJointDriver::request_position() {
   CanFrame can_msg;
   can_msg.is_remote_request = true;
   can_msg.is_extended       = CAN_KONARM_1_GET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_POS_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_GET_POS_FRAME_ID & _base_command_id_mask);
   can_msg.size              = 0;
   return _can_driver->send(can_msg);
 }
@@ -169,7 +172,7 @@ Status KonArmJointDriver::request_torque() {
   CanFrame can_msg;
   can_msg.is_remote_request = true;
   can_msg.is_extended       = CAN_KONARM_1_GET_TORQUE_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_TORQUE_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_GET_TORQUE_FRAME_ID & _base_command_id_mask);
   can_msg.size              = 0;
   return _can_driver->send(can_msg);
 }
@@ -178,7 +181,7 @@ Status KonArmJointDriver::request_errors() {
   CanFrame can_msg;
   can_msg.is_remote_request = true;
   can_msg.is_extended       = CAN_KONARM_1_GET_ERRORS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_ERRORS_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_GET_ERRORS_FRAME_ID & _base_command_id_mask);
   can_msg.size              = 0;
   return _can_driver->send(can_msg);
 }
@@ -187,9 +190,9 @@ Status KonArmJointDriver::request_config() {
   CanFrame can_msg;
   can_msg.is_remote_request = true;
   can_msg.is_extended       = CAN_KONARM_1_GET_CONFIG_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_GET_CONFIG_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_GET_CONFIG_FRAME_ID & _base_command_id_mask);
   can_msg.size              = 0;
-  config_sender.reset_request_state();
+  _config_sender.reset_request_state();
   return _can_driver->send(can_msg);
 }
 
@@ -201,7 +204,7 @@ Status KonArmJointDriver::set_position(float position_r, float velocity_rs) {
   CanFrame can_msg;
   can_msg.is_remote_request = false;
   can_msg.is_extended       = CAN_KONARM_1_SET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_SET_POS_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_SET_POS_FRAME_ID & _base_command_id_mask);
   can_msg.size              = CAN_KONARM_1_SET_POS_LENGTH;
   can_konarm_1_set_pos_pack(can_msg.data, &msg, can_msg.size);
   return _can_driver->send(can_msg);
@@ -215,7 +218,7 @@ Status KonArmJointDriver::set_velocity(float velocity_rs) {
   CanFrame can_msg;
   can_msg.is_remote_request = false;
   can_msg.is_extended       = CAN_KONARM_1_SET_POS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_SET_POS_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_SET_POS_FRAME_ID & _base_command_id_mask);
   can_msg.size              = CAN_KONARM_1_SET_POS_LENGTH;
   can_konarm_1_set_pos_pack(can_msg.data, &msg, can_msg.size);
   return _can_driver->send(can_msg);
@@ -228,7 +231,7 @@ Status KonArmJointDriver::set_torque(float torque_nm) {
   CanFrame can_msg;
   can_msg.is_remote_request = false;
   can_msg.is_extended       = CAN_KONARM_1_SET_TORQUE_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_SET_TORQUE_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_SET_TORQUE_FRAME_ID & _base_command_id_mask);
   can_msg.size              = CAN_KONARM_1_SET_TORQUE_LENGTH;
   can_konarm_1_set_torque_pack(can_msg.data, &msg, can_msg.size);
   return _can_driver->send(can_msg);
@@ -252,7 +255,7 @@ Status KonArmJointDriver::set_control_mode(MovementControlMode mode) {
   CanFrame mode_can_msg;
   mode_can_msg.is_remote_request = false;
   mode_can_msg.is_extended       = CAN_KONARM_1_SET_CONTROL_MODE_IS_EXTENDED;
-  mode_can_msg.id   = joint_base_id_ | (CAN_KONARM_1_SET_CONTROL_MODE_FRAME_ID & base_command_id_mask);
+  mode_can_msg.id   = _joint_base_id | (CAN_KONARM_1_SET_CONTROL_MODE_FRAME_ID & _base_command_id_mask);
   mode_can_msg.size = CAN_KONARM_1_SET_CONTROL_MODE_LENGTH;
   can_konarm_1_set_control_mode_pack(mode_can_msg.data, &mode_msg, mode_can_msg.size);
   return _can_driver->send(mode_can_msg);
@@ -265,14 +268,15 @@ Status KonArmJointDriver::set_effector_control(uint8_t percent) {
   CanFrame can_msg;
   can_msg.is_remote_request = false;
   can_msg.is_extended       = CAN_KONARM_1_SET_EFFECTOR_POSITION_IS_EXTENDED;
-  can_msg.id   = joint_base_id_ | (CAN_KONARM_1_SET_EFFECTOR_POSITION_FRAME_ID & base_command_id_mask);
+  can_msg.id   = _joint_base_id | (CAN_KONARM_1_SET_EFFECTOR_POSITION_FRAME_ID & _base_command_id_mask);
   can_msg.size = CAN_KONARM_1_SET_EFFECTOR_POSITION_LENGTH;
   can_konarm_1_set_effector_position_pack(can_msg.data, &msg, can_msg.size);
   return _can_driver->send(can_msg);
 }
 
 Status KonArmJointDriver::set_config(const ModuleConfig &config) {
-  auto frames = config_sender.pack((CAN_KONARM_1_SEND_CONFIG_FRAME_ID & base_command_id_mask) | joint_base_id_, config);
+  auto frames =
+  _config_sender.pack((CAN_KONARM_1_SEND_CONFIG_FRAME_ID & _base_command_id_mask) | _joint_base_id, config);
   for(const auto &can_msg : frames) {
     CanFrame frame;
     frame.is_remote_request = false;
@@ -294,7 +298,7 @@ Status KonArmJointDriver::set_emergency_stop(bool stop) {
   CanFrame can_msg;
   can_msg.is_remote_request = false;
   can_msg.is_extended       = CAN_KONARM_1_STATUS_IS_EXTENDED;
-  can_msg.id                = joint_base_id_ | (CAN_KONARM_1_STATUS_FRAME_ID & base_command_id_mask);
+  can_msg.id                = _joint_base_id | (CAN_KONARM_1_STATUS_FRAME_ID & _base_command_id_mask);
   can_msg.size              = CAN_KONARM_1_STATUS_LENGTH;
   can_konarm_1_status_pack(can_msg.data, &msg, can_msg.size);
   return _can_driver->send(can_msg);
@@ -307,5 +311,5 @@ void KonArmJointDriver::reset_state() {
   // state_torque_nm   = 0.0f;
   control_mode = MovementControlMode::NONE;
   errors       = ErrorData();
-  config_sender.reset_request_state();
+  _config_sender.reset_request_state();
 }

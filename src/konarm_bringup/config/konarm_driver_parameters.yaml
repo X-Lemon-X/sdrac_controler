@@ -1,9 +1,10 @@
 konarm_driver:
-  frame_id: "konarm"
-  can_interface: "can0"
-  control_loop_hz: 75.0
-  error_get_hz: 2
-  timeout_s: 0.5
-  msg_timeout: 0.5
-  use_sim_time: false
-  use_sim_hardware: true
+  ros__parameters:
+    frame_id: "konarm"
+    can_interface: "can0"
+    control_loop_hz: 75.0
+    error_get_hz: 2.0
+    timeout_s: 0.5
+    msg_timeout: 0.5
+    use_sim_time: false
+    use_sim_hardware: true

@@ -25,13 +25,29 @@ using namespace konarm_driver;
 
 KonArmDriver::KonArmDriver() : Node("kon_arm_driver") {
   RCLCPP_INFO(this->get_logger(), "Starting KonArm Driver Node");
-  on_init();
-  on_activate();
+  auto status = on_init();
+  if(!status.ok()) {
+    RCLCPP_FATAL(this->get_logger(), "Failed to initialize KonArm Driver Node: %s", status.to_string().c_str());
+    throw std::runtime_error("Failed to initialize KonArm Driver Node: " + status.to_string());
+  }
+
+  status = on_activate();
+  if(!status.ok()) {
+    RCLCPP_FATAL(this->get_logger(), "Failed to activate KonArm Driver Node: %s", status.to_string().c_str());
+    throw std::runtime_error("Failed to activate KonArm Driver Node: " + status.to_string());
+  }
 }
 
 KonArmDriver::~KonArmDriver() {
-  on_deactivate();
-  on_shutdown();
+  auto status = on_deactivate();
+  if(!status.ok()) {
+    RCLCPP_ERROR(this->get_logger(), "Error during deactivation: %s", status.to_string().c_str());
+  }
+
+  status = on_shutdown();
+  if(!status.ok()) {
+    RCLCPP_ERROR(this->get_logger(), "Error during shutdown: %s", status.to_string().c_str());
+  }
 }
 
 void KonArmDriver::reconfigure_callback(const Params &params) {
@@ -121,6 +137,7 @@ Status KonArmDriver::on_activate() {
   _joint_drivers.clear();
 
   if(params_.use_sim_time || params_.use_sim_hardware) {
+
     _can_driver = nullptr;
     _joint_drivers.emplace_back(
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_1_STATUS_FRAME_ID & base_konarm_id_mask));
@@ -134,21 +151,23 @@ Status KonArmDriver::on_activate() {
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask));
     _joint_drivers.emplace_back(
     std::make_shared<KonArmJointDriverSimulation>(CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask));
-
+    RCLCPP_INFO(this->get_logger(), "Enabled Simulated joint drivers.");
   } else {
     ARI_ASIGN_TO_OR_RETURN(_can_driver, CanDriver::Make(params_.can_interface, true, 100000, 256));
-    _joint_drivers.emplace_back(
-    std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_1_STATUS_FRAME_ID & base_konarm_id_mask));
-    _joint_drivers.emplace_back(
-    std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_2_STATUS_FRAME_ID & base_konarm_id_mask));
-    _joint_drivers.emplace_back(
-    std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_3_STATUS_FRAME_ID & base_konarm_id_mask));
-    _joint_drivers.emplace_back(
-    std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_4_STATUS_FRAME_ID & base_konarm_id_mask));
-    _joint_drivers.emplace_back(
-    std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask));
-    _joint_drivers.emplace_back(
-    std::make_shared<KonArmJointDriver>(get_logger(), _can_driver, CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask));
+    _joint_drivers.emplace_back(std::make_shared<KonArmJointDriver>(get_logger(), std::move(get_clock()), _can_driver,
+                                                                    CAN_KONARM_1_STATUS_FRAME_ID & base_konarm_id_mask));
+    _joint_drivers.emplace_back(std::make_shared<KonArmJointDriver>(get_logger(), std::move(get_clock()), _can_driver,
+                                                                    CAN_KONARM_2_STATUS_FRAME_ID & base_konarm_id_mask));
+    _joint_drivers.emplace_back(std::make_shared<KonArmJointDriver>(get_logger(), std::move(get_clock()), _can_driver,
+                                                                    CAN_KONARM_3_STATUS_FRAME_ID & base_konarm_id_mask));
+    _joint_drivers.emplace_back(std::make_shared<KonArmJointDriver>(get_logger(), std::move(get_clock()), _can_driver,
+                                                                    CAN_KONARM_4_STATUS_FRAME_ID & base_konarm_id_mask));
+    _joint_drivers.emplace_back(std::make_shared<KonArmJointDriver>(get_logger(), std::move(get_clock()), _can_driver,
+                                                                    CAN_KONARM_5_STATUS_FRAME_ID & base_konarm_id_mask));
+    _joint_drivers.emplace_back(std::make_shared<KonArmJointDriver>(get_logger(), std::move(get_clock()), _can_driver,
+                                                                    CAN_KONARM_6_STATUS_FRAME_ID & base_konarm_id_mask));
+    ARI_RETURN_ON_ERROR(_can_driver->open_can());
+    RCLCPP_INFO(this->get_logger(), "Enabled regular joint drivers.");
   }
   _joint_controls.resize(_joint_drivers.size());
 
