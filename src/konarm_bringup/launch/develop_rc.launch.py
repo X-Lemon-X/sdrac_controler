@@ -18,12 +18,24 @@ def generate_launch_description():
 
     robot_urdf = xacro.process_file(os.path.join(get_package_share_directory("konarm_bringup"), 'urdf', 'sdrac.urdf.xacro')).toxml()
 
+    # Declare launch arguments
+    use_sim_hardware_arg = DeclareLaunchArgument(
+        'use_sim_hardware',
+        default_value='false',
+        description='Use simulated hardware interface'
+    )
+
+    # Get launch configuration values
+    use_sim_hardware = LaunchConfiguration('use_sim_hardware')
 
     konarm_driver = Node(
             package='konarm_driver',
             executable='konarm_driver',
             name='konarm_driver',
-            parameters=[config_konarm]
+            parameters=[
+                config_konarm,
+                {'use_sim_hardware': use_sim_hardware}
+            ]
         )
 
     konarm_driver_basic =  Node(
@@ -49,6 +61,7 @@ def generate_launch_description():
 
 
     return LaunchDescription([
+        use_sim_hardware_arg,
         robot_state_publisher_node,
         konarm_driver,
         konarm_driver_basic,

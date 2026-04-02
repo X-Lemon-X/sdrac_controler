@@ -51,16 +51,21 @@ KonArmDriver::~KonArmDriver() {
   }
 }
 
+void KonArmDriver::print_params() {
+  RCLCPP_INFO(this->get_logger(), "Parameters:");
+  RCLCPP_INFO(this->get_logger(), "  - frame_id: %s", params_.frame_id.c_str());
+  RCLCPP_INFO(this->get_logger(), "  - can_interface: %s", params_.can_interface.c_str());
+  RCLCPP_INFO(this->get_logger(), "  - control_loop_hz: %.3f", params_.control_loop_hz);
+  RCLCPP_INFO(this->get_logger(), "  - error_get_hz: %.3f", params_.error_get_hz);
+  RCLCPP_INFO(this->get_logger(), "  - timeout_s: %.3f", params_.timeout_s);
+  RCLCPP_INFO(this->get_logger(), "  - msg_timeout: %.3f", params_.msg_timeout);
+  RCLCPP_INFO(this->get_logger(), "  - use_sim_time: %s", params_.use_sim_time ? "true" : "false");
+  RCLCPP_INFO(this->get_logger(), "  - use_sim_hardware: %s", params_.use_sim_hardware ? "true" : "false");
+}
+
 void KonArmDriver::reconfigure_callback(const Params &params) {
   RCLCPP_INFO(this->get_logger(), "Reconfigure Request:");
-  RCLCPP_INFO(this->get_logger(), " frame_id: %s", params.frame_id.c_str());
-  RCLCPP_INFO(this->get_logger(), " can_interface: %s", params.can_interface.c_str());
-  RCLCPP_INFO(this->get_logger(), " control_loop_hz: %.3f", params.control_loop_hz);
-  RCLCPP_INFO(this->get_logger(), " error_get_hz: %.3f", params.error_get_hz);
-  RCLCPP_INFO(this->get_logger(), " timeout_s: %.3f", params.timeout_s);
-  RCLCPP_INFO(this->get_logger(), " msg_timeout: %.3f", params.msg_timeout);
-  RCLCPP_INFO(this->get_logger(), " use_sim_time: %s", params.use_sim_time ? "true" : "false");
-  RCLCPP_INFO(this->get_logger(), " use_sim_hardware: %s", params.use_sim_hardware ? "true" : "false");
+  print_params();
 
   params_ = params;
   on_deactivate();
@@ -139,6 +144,8 @@ Status KonArmDriver::on_activate() {
     return Status::OK();
   }
   RCLCPP_INFO(this->get_logger(), "Activating...");
+
+  print_params();
 
 
   static constexpr uint32_t base_konarm_id_mask = 0xfffffff0;

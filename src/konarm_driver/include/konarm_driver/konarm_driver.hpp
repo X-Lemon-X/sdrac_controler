@@ -49,6 +49,8 @@ public:
 private:
   void reconfigure_callback(const Params &params);
 
+  void print_params();
+
   Status on_init();
   Status on_activate();
   Status on_deactivate();
