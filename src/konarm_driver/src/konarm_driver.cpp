@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <memory>
 #include <string>
@@ -287,12 +288,7 @@ void KonArmDriver::subscription_joint_control_callback(const sensor_msgs::msg::J
 
 void KonArmDriver::subscription_effector_control_callback(const std_msgs::msg::Int8::SharedPtr msg) {
   // THERE IS NO CHECK FOR OLD MESSAGE THIS IS SAFE TO DO !!! TRUST ME BRO
-  int8_t command = msg->data;
-  if(command < 0) {
-    command = 0;
-  } else if(command > 100) {
-    command = 100;
-  }
+  int8_t command = std::clamp(msg->data, static_cast<int8_t>(0), static_cast<int8_t>(100));
   for(auto &joint_driver : _joint_drivers) {
     joint_driver->set_effector_control(static_cast<uint8_t>(command));
   }
