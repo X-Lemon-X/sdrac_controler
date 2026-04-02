@@ -297,6 +297,7 @@ void KonArmDriver::subscription_effector_control_callback(const std_msgs::msg::I
 void KonArmDriver::subscription_emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg) {
   // THERE IS NO CHECK FOR OLD MESSAGE AS THIS IS AN EMERGENCY STOP !!!
 
+
   for(auto &joint_driver : _joint_drivers) {
     joint_driver->set_emergency_stop(msg->data);
   }
