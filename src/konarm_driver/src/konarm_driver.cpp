@@ -53,7 +53,14 @@ KonArmDriver::~KonArmDriver() {
 void KonArmDriver::reconfigure_callback(const Params &params) {
   RCLCPP_INFO(this->get_logger(), "Reconfigure Request:");
   RCLCPP_INFO(this->get_logger(), " frame_id: %s", params.frame_id.c_str());
-  RCLCPP_INFO(this->get_logger(), "can_interface: %s", params.can_interface.c_str());
+  RCLCPP_INFO(this->get_logger(), " can_interface: %s", params.can_interface.c_str());
+  RCLCPP_INFO(this->get_logger(), " control_loop_hz: %.3f", params.control_loop_hz);
+  RCLCPP_INFO(this->get_logger(), " error_get_hz: %.3f", params.error_get_hz);
+  RCLCPP_INFO(this->get_logger(), " timeout_s: %.3f", params.timeout_s);
+  RCLCPP_INFO(this->get_logger(), " msg_timeout: %.3f", params.msg_timeout);
+  RCLCPP_INFO(this->get_logger(), " use_sim_time: %s", params.use_sim_time ? "true" : "false");
+  RCLCPP_INFO(this->get_logger(), " use_sim_hardware: %s", params.use_sim_hardware ? "true" : "false");
+
   params_ = params;
   on_deactivate();
   on_activate();
@@ -424,7 +431,7 @@ Status KonArmDriver::control_loop() {
   sensor_msgs::msg::JointState joint_state_msg;
   joint_state_msg.header.frame_id = params_.frame_id;
   joint_state_msg.header.stamp    = this->get_clock()->now();
-  // joint_state_msg.name.resize(joint_drivers_.size());
+  joint_state_msg.name.resize(_joint_drivers.size());
   joint_state_msg.position.resize(_joint_drivers.size());
   joint_state_msg.velocity.resize(_joint_drivers.size());
   joint_state_msg.effort.resize(_joint_drivers.size());
@@ -476,7 +483,7 @@ Status KonArmDriver::control_loop() {
     }
 
 
-    // joint_state_msg.name[i]     = "joint_" + std::to_string(i + 1);
+    joint_state_msg.name[i]     = "Rev" + std::to_string(i + 1);
     joint_state_msg.position[i] = joint_driver->get_position();
     joint_state_msg.velocity[i] = joint_driver->get_velocity();
     joint_state_msg.effort[i]   = joint_driver->get_torque();

@@ -88,12 +88,12 @@ public:
       _status                           = KonarStatus::EMERGENCY_STOP;
       _joint_control.velocity_rs        = 0;
       _joint_control.torque_nm          = 0;
-      _joint_control.position_r         = 0;
+      _joint_control.position_r         = _robot_state.position_r;
       _joint_control.effector_control_p = 0;
       _robot_state.effector_control_p   = 0;
-      _robot_state.position_r           = 0;
-      _robot_state.velocity_rs          = 0;
-      _robot_state.torque_nm            = 0;
+      // _robot_state.position_r           = 0;
+      _robot_state.velocity_rs = 0;
+      _robot_state.torque_nm   = 0;
     } else {
       _status = KonarStatus::OK;
     }
@@ -152,9 +152,14 @@ private:
   void simulate() {
     auto current_time = _clock.now();
     double dt         = (current_time - _prev_tim).seconds();
+    _prev_tim         = current_time;
+
+    if(_status == KonarStatus::EMERGENCY_STOP) {
+      _prev_tim = current_time;
+      return;
+    }
     if(dt <= 0.001)
       return; // minimum simulation step 1ms
-    _prev_tim = current_time;
 
     switch(_joint_control.control_mode) {
     case MovementControlMode::POSITION: {
